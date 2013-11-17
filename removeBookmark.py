@@ -24,16 +24,6 @@ class RemoveBookmarkCommand(sublime_plugin.WindowCommand, common.baseBookmarkCom
 		self.thread = RemoveBookmarkHandler(self.window)
 		self.thread.start()
 
-	#exposed to others 	
-	def RemoveBookmark_(self, index):
-		if index < 0:
-			return;
-		del self.bookmarks[index]
-		self.save_()
-
-		common.updateGutter(self.window.active_view(), self.bookmarks)
-
-
 		
 class RemoveBookmarkHandler(threading.Thread):
 	def __init__(self, window):
@@ -49,11 +39,8 @@ class RemoveBookmarkHandler(threading.Thread):
 	def run(self):
 		view = self.window.active_view()
 
-		bookmarkNames = []
-		for bookmark in self.bookmarks:
-			bookmarkNames.append(bookmark.getName())
-	
-		self.window.show_quick_panel(bookmarkNames, self.Done_, sublime.MONOSPACE_FONT, 1, self.Highlighted_)
+		bookmarkItems = common.createBookmarksPanelItems(self.bookmarks)
+		self.window.show_quick_panel(bookmarkItems, self.Done_, sublime.MONOSPACE_FONT, 1, self.Highlighted_)
 
 
 	def Done_(self, index):

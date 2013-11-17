@@ -1,9 +1,15 @@
-import sublime, sublime_plugin, pickle
+import sublime, sublime_plugin
+import pickle
 from pickle import dump, load
-
+from os.path import dirname
 
 #gSavePath =  "bookmarks.pickle" 
-gSavePath = "/home/bollu/bookmarks.pickle"
+gRelSavePath = '/Local/sublimeBookmarks.pickle'
+#gSavePath = dirname(sublime.packages_path()) + gRelSavePath
+global gSavePath 
+gSavePath = dirname(sublime.packages_path())+'/Settings/sublimeBookmarks.pickle'
+
+global gRegionTag
 gRegionTag = "sublime_Bookmarks"
 
 global gBookmarks__
@@ -92,7 +98,17 @@ class baseBookmarkCommand:
 class Persistence:
 	def __init__(self):
 		self.loaded = False
-		pass
+
+		global gSavePath
+		gSavePath = dirname(sublime.packages_path())+'/Settings/sublimeBookmarks.pickle'
+		#global gSavePath
+		#gLog("\n\n gSavePAth::::: " + gSavePath)
+		#gSavePath = dirname(sublime.packages_path()) + gRelSavePath
+
+	def setSavePath(self):
+		global gSavePath
+		gSavePath = sublime.packages_path() +'/../Local/sublimeBookmarks.pickle'
+
 
 	def getBookmarks(self):
 		global gBookmarks__
@@ -100,8 +116,10 @@ class Persistence:
 		if not self.loaded:
 			self.loaded = True
 
-			gLog("\tloading bookmarks from file. should be one-time")
+			global gSavePath
+			gLog("\tloading bookmarks from file :" + gSavePath + ":. should be one-time")
 
+			self.setSavePath();
 			pickleFile = open(gSavePath, 'rb')
 			gBookmarks__ = pickle.load(pickleFile)
 
@@ -121,7 +139,9 @@ class Persistence:
 
 	def writeToDisk(self):
 		global gBookmarks__
+		global gSavePath
 
+		self.setSavePath();
 		pickleFile = open(gSavePath, 'wb')
 		pickle.dump(gBookmarks__, pickleFile)
 
@@ -146,4 +166,29 @@ def updateGutter(view):
 			regions.append(sublime.Region(pt))
 
 	view.erase_regions(gRegionTag)
-	view.add_regions(gRegionTag, regions, scope="string", icon="bookmark", flags= sublime.PERSISTENT | sublime.DRAW_STIPPLED_UNDERLINE ) 
+	view.add_regions(gRegionTag, regions, scope="string", icon="bookmark")#, flags= sublime.PERSISTENT | sublime.DRAW_STIPPLED_UNDERLINE ) 
+
+
+
+#panel creation code----------------------------
+
+def capStringEnd(string, length):
+		return string if len(string) <= length else string[ 0 : length - 3] + '...'
+
+
+def capStringBegin(string, length):
+		return string if len(string) <= length else '...' + string[ len(string) + 3 - (length)  : len(string) ] 
+
+
+
+def createBookmarksPanelItems(bookmarks):
+		bookmarkItems = []
+
+		for bookmark in bookmarks:
+			bookmarkName = bookmark.getName()
+			bookmarkLine = capStringEnd(bookmark.getLine(), 50)
+			bookmarkFile = capStringBegin(bookmark.getFilePath(), 50)
+
+			bookmarkItems.append( [bookmarkName, bookmarkLine, bookmarkFile] )
+
+		return bookmarkItems

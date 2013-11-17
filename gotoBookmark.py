@@ -4,13 +4,6 @@ import threading
 
 from . import common
 
-def capStringEnd(string, length):
-		return string if len(string) <= length else string[ 0 : length - 3] + '...'
-
-
-def capStringBegin(string, length):
-		return string if len(string) <= length else '...' + string[ len(string) + 3 - (length)  : len(string) ] 
-
 
 class GotoBookmarkCommand(sublime_plugin.WindowCommand, common.baseBookmarkCommand):
 	def __init__(self, window):
@@ -46,7 +39,7 @@ class GotoBookmarkHandler(threading.Thread):
 	def run(self):
 		view = self.window.active_view()
 
-		bookmarkItems = self.Items_()
+		bookmarkItems = common.createBookmarksPanelItems(self.bookmarks)
 
 
 		# bookmarkNames = []
