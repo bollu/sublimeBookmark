@@ -4,6 +4,14 @@ import threading
 
 from . import common
 
+def capStringEnd(string, length):
+		return string if len(string) <= length else string[ 0 : length - 3] + '...'
+
+
+def capStringBegin(string, length):
+		return string if len(string) <= length else '...' + string[ len(string) + 3 - (length)  : len(string) ] 
+
+
 class GotoBookmarkCommand(sublime_plugin.WindowCommand, common.baseBookmarkCommand):
 	def __init__(self, window):
 		self.thread = None
@@ -11,104 +19,73 @@ class GotoBookmarkCommand(sublime_plugin.WindowCommand, common.baseBookmarkComma
 
 
 	def run(self):
-		 if self.thread is not None:
-		 	self.thread.join()
+		if self.thread is not None:
+			self.thread.join()
 
-		 self.thread = GotoBookmarkHandler(self.window, self)
-		 self.thread.start()
-
-	#accessed by others
-	def getBookmarkNames_(self):
 		self.load_()
 
-		bookmarkNames = []
-		for bookmark in self.bookmarks:
-			bookmarkNames.append(bookmark.getName())
-		return bookmarkNames
+		if len(self.bookmarks) == 0:
+			sublime.status_message("no bookmarks to goto!")
+			return 0
 
-	#accessed by others
-	def getBookmark(self, index):
-		if index == -1:
-			return None
-
-		else:
-			return self.bookmarks[index]
+		self.thread = GotoBookmarkHandler(self.window, self)
+		self.thread.start()
 
 
 class GotoBookmarkHandler(threading.Thread):
-	def __init__(self, window, GotoBookmarkCommand):
+	def __init__(self, window, BookmarkCommand):
 		self.window = window
-		self.GotoBookmarkCommand = GotoBookmarkCommand
-		self.done = False
-
-		self.fileSwitcher = FileSwitcher(window, GotoBookmarkCommand) 
+		
+		global gPersist
+		self.bookmarks = common.gPersist.getBookmarks() 
+		self.originalFile = common.Bookmark(window, "originalFile")
 
 		threading.Thread.__init__(self)  
 
 
-		
 	def run(self):
-
 		view = self.window.active_view()
-		items = self.GotoBookmarkCommand.getBookmarkNames_()
-	
-		self.window.show_quick_panel(items, self.Done_, sublime.MONOSPACE_FONT, 1, self.Highlighted_)
+
+		bookmarkItems = self.Items_()
 
 
-	def Done_(self, item):
+		# bookmarkNames = []
+		# for bookmark in self.bookmarks:
+		# 	bookmarkNames.append(bookmark.getName())
+		
+		#view = self.window.create_output_panel("Goto Bookmark")
 
-		if item == -1:
-			self.fileSwitcher.resetFile()
+		self.window.show_quick_panel(bookmarkItems, self.Done_, 0, -1, self.Highlighted_)
+		
+
+	def Done_(self, index):
+
+		if index == -1:
+			#if cancelled, go back to original file
+			self.originalFile.Goto(self.window, False)
 			common.gLog("Cancelled")
 		else:
-			self.fileSwitcher.switchFile(item)
+			self.GotoBookmark_(index)
 			common.gLog("Done_")
 
-		
+	def Highlighted_(self, index):
+		self.GotoBookmark_(index)
 
 
-	def Highlighted_(self, item):
-		self.fileSwitcher.switchFile(item)
-		common.gLog("Highlighted_")
+	def GotoBookmark_(self, index):
+		selectedBookmark = self.bookmarks[index]
+		selectedBookmark.Goto(self.window, False)
 
+	
 
+	def Items_(self):
+		bookmarkItems = []
 
-class FileSwitcher:
-	def __init__(self, window, GotoBookmarkCommand):
-		self.window = window
+		for bookmark in self.bookmarks:
+			bookmarkName = bookmark.getName()
+			bookmarkLine = capStringEnd(bookmark.getLine(), 50)
+			bookmarkFile = capStringBegin(bookmark.getFilePath(), 50)
 
-		#keep a reference to the original file
-		self.originalFile = common.Bookmark(window, "originalFile")
+			bookmarkItems.append( [bookmarkName, bookmarkLine, bookmarkFile] )
 
-		self.GotoBookmarkCommand = GotoBookmarkCommand
-
-
-	def resetFile(self):
-		self.gotoBookmark(self.originalFile)
-
-
-	def switchFile(self, index):
-		bookmark = self.GotoBookmarkCommand.getBookmark(index)
-		
-		if bookmark is None:
-			return
-
-		self.gotoBookmark(bookmark)
-
-
-	def gotoBookmark(self, bookmark):
-		filePath = bookmark.getFilePath()
-		row = bookmark.getRow()
-		col = bookmark.getCol()
-
-		#first open the file
-		self.window.open_file(filePath)
-		view = self.window.active_view()
-
-		#now goto line
-		pt = view.text_point(row, col)
-
-		view.sel().clear()
-		view.sel().add(sublime.Region(pt))
-
-		view.show(pt)
+		return bookmarkItems
