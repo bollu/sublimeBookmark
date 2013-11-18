@@ -4,6 +4,12 @@ import threading
 
 from . import common
 
+class RemoveAllBookmarksCommand(sublime_plugin.WindowCommand):
+	def run(self):
+		emptyBookmarks = []
+		common.setBookmarks(emptyBookmarks)
+		common.updateGutter(self.window.active_view())
+
 
 class RemoveBookmarkCommand(sublime_plugin.WindowCommand, common.baseBookmarkCommand):
 	def __init__(self, window):
@@ -28,9 +34,8 @@ class RemoveBookmarkCommand(sublime_plugin.WindowCommand, common.baseBookmarkCom
 class RemoveBookmarkHandler(threading.Thread):
 	def __init__(self, window):
 		self.window = window
-		
-		global gPersist
-		self.bookmarks = common.gPersist.getBookmarks()
+		self.bookmarks = common.getBookmarks()
+
 		self.originalFile = common.Bookmark(window, "originalFile")
 
 		threading.Thread.__init__(self)  
@@ -39,7 +44,7 @@ class RemoveBookmarkHandler(threading.Thread):
 	def run(self):
 		view = self.window.active_view()
 
-		bookmarkItems = common.createBookmarksPanelItems(self.bookmarks)
+		bookmarkItems = common.createBookmarksPanelItems(self.window, self.bookmarks)
 		self.window.show_quick_panel(bookmarkItems, self.Done_, sublime.MONOSPACE_FONT, 1, self.Highlighted_)
 
 
@@ -48,15 +53,14 @@ class RemoveBookmarkHandler(threading.Thread):
 		self.originalFile.Goto(self.window, True)
 
 		if index < 0:			
-			common.gLog("Cancelled")
+			common.gLog("Canceled Remove Bookmark")
 		else:
 			
-			#delete the bookmark
+			#delete the bookmark in my personal index
 			del self.bookmarks[index]
-			
-			global gPersist
+
 			#update the global bookmarks list
-			common.gPersist.setBookmarks(self.bookmarks)
+			common.setBookmarks(self.bookmarks)
 			common.updateGutter(self.window.active_view())
 
 			common.gLog("Removed Bookmark")

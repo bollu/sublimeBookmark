@@ -9,7 +9,6 @@ class AddBookmarkCommand(sublime_plugin.WindowCommand, common.baseBookmarkComman
 	def __init__(self, window):
 		self.thread = None
 		common.baseBookmarkCommand.__init__(self, window)
-		self.load_()
 
 	def run(self):
 		if self.thread is not None:
@@ -21,9 +20,7 @@ class AddBookmarkCommand(sublime_plugin.WindowCommand, common.baseBookmarkComman
 class AddBookmarkHandler(threading.Thread):
 	def __init__(self, window, addBookmarkCommand):
 		self.window = window
-
-		global gPersist
-		self.bookmarks = common.gPersist.getBookmarks()
+		self.bookmarks = common.getBookmarks()
 
 		threading.Thread.__init__(self)  
 		
@@ -43,8 +40,8 @@ class AddBookmarkHandler(threading.Thread):
 		bookmark.printDbg()
 		self.bookmarks.append(bookmark)
 
-		global gPersist
-		common.gPersist.setBookmarks(self.bookmarks)
+		
+		common.setBookmarks(self.bookmarks)
 		common.updateGutter(self.window.active_view())
 		return
 		

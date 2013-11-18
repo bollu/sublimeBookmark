@@ -1,59 +1,49 @@
 import sublime, sublime_plugin
 import pickle
 from pickle import dump, load
-from os.path import dirname
+from os.path import dirname, isfile
 
-#gSavePath =  "bookmarks.pickle" 
-gRelSavePath = '/Local/sublimeBookmarks.pickle'
-#gSavePath = dirname(sublime.packages_path()) + gRelSavePath
-global gSavePath 
-gSavePath = dirname(sublime.packages_path())+'/Settings/sublimeBookmarks.pickle'
-
-global gRegionTag
+gSavePath = dirname(sublime.packages_path()) + '/Local/sublimeBookmarks.pickle'
 gRegionTag = "sublime_Bookmarks"
 
-global gBookmarks__
-gBookmarks__ = [] 
+global gBookmarks
+gBookmarks = None
+
+
 
 def gLog(str):
 	if(True):
-		print (str)
+		print ("\n" + str)
 
+def getCurrentProject(window):
+	project = window.project_file_name()
+	if project is None:
+		return ""
+	return project
 
 
 class Bookmark:
 	def __init__(self, window, name):
 		view = window.active_view()
-		
-		(row,col) = view.rowcol(view.sel()[0].begin())
+		self.view = view
+
+		self.name = name
+		self.filePath = view.file_name()
+
+		#subl is weird. It sets project_file_name() to None -_-
+		self.project = getCurrentProject(window)
 
 		#caution: calculated from (0,0) NOT (1,1)
-		self.filePath = view.file_name()
+		(row,col) = view.rowcol(view.sel()[0].begin())
 		self.row = row
 		self.col = col
-		self.name = name
 
-		self.view = view
-	
+		
 	def Goto(self, window, useColumnInfo):
-		gLog ("goto")
-		window.open_file(self.filePath)
-
-		view = window.active_view()
-
-		if useColumnInfo:
-			pt = view.text_point(self.row, self.col)
-		else:
-			pt = view.text_point(self.row, 0)
-			
-		view.sel().clear()
-		view.sel().add(sublime.Region(pt))
-
-		view.show(pt)
+		rowColStr = ":" + str(self.row) + ":" + str(self.col)
+		window.open_file(self.filePath + rowColStr, sublime.TRANSIENT | sublime.ENCODED_POSITION)
 
 	def getLine(self):
-		gLog ("getLine")
-		
 		pt = self.view.text_point(self.row, self.col)
 		lineRegion =  self.view.line(pt)
 		lineText = self.view.substr(lineRegion)
@@ -71,93 +61,86 @@ class Bookmark:
 
 	def getFilePath(self):
 		return self.filePath
-		
+	
+	def getProject(self):
+		return self.project
+
+
 	def printDbg(self):
-		gLog ("Bookmark: name: " + self.name + "; row " + str(self.row) + "; column: " + str(self.col))
+		gLog ("New Bookmark: " + self.name + " | " + str(self.row) + ": " + str(self.col) + "| Project: " + self.project)
 
 
+
+#baseBookmarkCommand-------------------------------------
 class baseBookmarkCommand:
 	def __init__(self, window):
 		self.window = window
-		self.bookmarks = []
-		self.dbg = True
-
+		self.bookmarks = None
 
 	def save_(self):
-		gLog ("saving")
-		gPersist.setBookmarks(self.bookmarks)
-
-
+		setBookmarks(self.bookmarks)
+	
 	def load_(self):
-		gLog ("loading")
-		self.bookmarks = gPersist.getBookmarks()
+		self.bookmarks = getBookmarks()
 
+#save / load code----------------------------------------
+def getBookmarks():
+	global gBookmarks  #<- only need this when writing to a global
 
+	gSavePath = dirname(sublime.packages_path()) + '/Local/sublimeBookmarks.pickle'
 
+	#The first time sublime text loads, gBookmarks will be None. So, load bookmarks
 
-class Persistence:
-	def __init__(self):
-		self.loaded = False
+	if gBookmarks is not None:
+		return gBookmarks
 
-		global gSavePath
-		gSavePath = dirname(sublime.packages_path())+'/Settings/sublimeBookmarks.pickle'
-		#global gSavePath
-		#gLog("\n\n gSavePAth::::: " + gSavePath)
-		#gSavePath = dirname(sublime.packages_path()) + gRelSavePath
+	readBookmarksFromDisk()
+	
+	return gBookmarks
 
-	def setSavePath(self):
-		global gSavePath
-		gSavePath = sublime.packages_path() +'/../Local/sublimeBookmarks.pickle'
+def setBookmarks(bookmarks):
+	global gBookmarks
 
+	assert bookmarks != None, "trying to write  *None* bookmarks."
 
-	def getBookmarks(self):
-		global gBookmarks__
+	gBookmarks = bookmarks
+	gLog("set global bookmarks")
 
-		if not self.loaded:
-			self.loaded = True
+def writeBookmarksToDisk():
+	global gBookmarks
+	global gSavePath
 
-			global gSavePath
-			gLog("\tloading bookmarks from file :" + gSavePath + ":. should be one-time")
+	assert gBookmarks != None, "trying to write *None* bookmarks to disk"
 
-			self.setSavePath();
-			pickleFile = open(gSavePath, 'rb')
-			gBookmarks__ = pickle.load(pickleFile)
+	gSavePath = dirname(sublime.packages_path()) + '/Local/sublimeBookmarks.pickle'
+	
+	pickleFile = open(gSavePath, "wb")
+	pickle.dump(gBookmarks, pickleFile)
 
-			for bookmark in gBookmarks__:
-				bookmark.printDbg()
+	gLog("wrote bookmarks to disk. Path: " + gSavePath)
 
-		return gBookmarks__
+def readBookmarksFromDisk():
+	global gBookmarks
+	global gSavePath
 
+	gSavePath = dirname(sublime.packages_path()) + '/Local/sublimeBookmarks.pickle'
 
-	def setBookmarks(self, bookmarks):
-		global gBookmarks__
+	if isfile(gSavePath):
+		gLog("loading bookmarks from disk. Path: " + gSavePath)
+		pickleFile = open(gSavePath, "rb")
+		gBookmarks = pickle.load(pickleFile)
 
-		#removeBookmarks and addBookmarks calls these functions
-		gBookmarks__ = bookmarks
+	else:
+		gLog("no bookmark load file found. Path:" + gSavePath)
+		gBookmarks = []
 
-
-
-	def writeToDisk(self):
-		global gBookmarks__
-		global gSavePath
-
-		self.setSavePath();
-		pickleFile = open(gSavePath, 'wb')
-		pickle.dump(gBookmarks__, pickleFile)
-
-		gLog("\twriting bookmarks to disk. may take time.")
-
-
-#this is hacky, but I'm new to python. Dunno a better way :(
-global gPersist
-gPersist = Persistence()
-
+#Gutters-------------------------------------
 
 def updateGutter(view):
-	global gPersist
+	currentProject = getCurrentProject(view.window())
 
 	filePath = view.file_name()
-	bookmarks = gPersist.getBookmarks()
+	bookmarks = getBookmarks()
 
 	regions =  []
 	for bookmark in bookmarks:
@@ -166,7 +149,7 @@ def updateGutter(view):
 			regions.append(sublime.Region(pt))
 
 	view.erase_regions(gRegionTag)
-	view.add_regions(gRegionTag, regions, scope="string", icon="bookmark")#, flags= sublime.PERSISTENT | sublime.DRAW_STIPPLED_UNDERLINE ) 
+	view.add_regions(gRegionTag, regions, scope="string", icon="bookmark")
 
 
 
@@ -180,15 +163,23 @@ def capStringBegin(string, length):
 		return string if len(string) <= length else '...' + string[ len(string) + 3 - (length)  : len(string) ] 
 
 
+def createBookmarksPanelItems(window, bookmarks):
+		currentProject = getCurrentProject(window)
 
-def createBookmarksPanelItems(bookmarks):
 		bookmarkItems = []
+		gLog("currentProject: " + currentProject)
 
 		for bookmark in bookmarks:
-			bookmarkName = bookmark.getName()
-			bookmarkLine = capStringEnd(bookmark.getLine(), 50)
-			bookmarkFile = capStringBegin(bookmark.getFilePath(), 50)
+			bookmarkProject = bookmark.getProject()
+		
+			bookmark.printDbg()
 
-			bookmarkItems.append( [bookmarkName, bookmarkLine, bookmarkFile] )
+			#this is not yet perfect. will have to revise this
+			if True or (currentProject == "") or (currentProject.lower() == bookmarkProject.lower()):
+				bookmarkName = bookmark.getName()
+				bookmarkLine = capStringEnd(bookmark.getLine(), 50)
+				bookmarkFile = capStringBegin(bookmark.getFilePath(), 50)
 
+				bookmarkItems.append( [bookmarkName, bookmarkLine, bookmarkFile] )
+				
 		return bookmarkItems

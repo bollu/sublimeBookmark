@@ -1,0 +1,52 @@
+[
+	{
+		"caption": "Edit",
+		"mnemonic": "E",
+		"id": "edit",
+		"children":
+		[
+			{
+				"caption": "Code Folding",
+				"id": "fold",
+				"children":
+				[
+					{"caption":"-"},
+					{ "caption": "Refold", "command": "buffer_scroll_re_fold" }
+				]
+			}
+		]
+	},
+	{
+		"caption": "Preferences",
+		"mnemonic": "n",
+		"id": "preferences",
+		"children":
+		[
+			{"caption":"-"},
+			{
+				"caption": "Package Settings",
+				"mnemonic": "P",
+				"id": "package-settings",
+				"children":
+				[
+					{
+						"caption": "Sublime Bookmarks",
+						"children":
+						[
+							{
+								"command": "open_file",
+								"args": {"file": "${packages}/SublimeBookmarks/SublimeBookmarks.sublime-settings"},
+								"caption": "Settings – Default"
+							},
+							{
+								"command": "open_file",
+								"args": {"file": "${packages}/User/SublimeBookmarks.sublime-settings"},
+								"caption": "Settings – User"
+							}
+						]
+					}
+				]
+			}
+		]
+	}
+]

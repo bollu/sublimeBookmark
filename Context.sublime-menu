@@ -2,20 +2,10 @@
   {
     "caption": "-"
   },
+  
   {
     "command": "add_bookmark", 
     "args": {}, 
     "caption": "Add Bookmark"
-  }, 
-  
-  {
-    "command": "goto_bookmark", 
-    "args": {}, 
-    "caption": "Goto Bookmark"
-  },
-  {
-    "command": "remove_bookmark", 
-    "args": {}, 
-    "caption": "Remove Bookmark"
   }, 
 ]

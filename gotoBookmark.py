@@ -30,7 +30,7 @@ class GotoBookmarkHandler(threading.Thread):
 		self.window = window
 		
 		global gPersist
-		self.bookmarks = common.gPersist.getBookmarks() 
+		self.bookmarks = common.getBookmarks() 
 		self.originalFile = common.Bookmark(window, "originalFile")
 
 		threading.Thread.__init__(self)  
@@ -39,7 +39,7 @@ class GotoBookmarkHandler(threading.Thread):
 	def run(self):
 		view = self.window.active_view()
 
-		bookmarkItems = common.createBookmarksPanelItems(self.bookmarks)
+		bookmarkItems = common.createBookmarksPanelItems(self.window, self.bookmarks)
 
 
 		# bookmarkNames = []
@@ -56,10 +56,10 @@ class GotoBookmarkHandler(threading.Thread):
 		if index == -1:
 			#if cancelled, go back to original file
 			self.originalFile.Goto(self.window, False)
-			common.gLog("Cancelled")
+			common.gLog("Cancelled goto")
 		else:
 			self.GotoBookmark_(index)
-			common.gLog("Done_")
+			common.gLog("Done with goto")
 
 	def Highlighted_(self, index):
 		self.GotoBookmark_(index)

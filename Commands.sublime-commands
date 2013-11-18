@@ -1,17 +1,22 @@
 [
-    // This is actually a sublime built-in command, on the right click menu by default
+    //Add a bookmark
     {
         "caption": "Bookmarks: Add Bookmark",
         "command": "add_bookmark"
     },
 
-    // SyncedSideBar commands
+    //Goto a specific bookmark
 	{
         "caption": "Bookmarks: Goto Bookmark",
         "command": "goto_bookmark"
     },
+    //Remove a single bookmark
     {
-        "caption": "Bookmarks: Remove Bookmark",
-        "command": "remove_bookmark"
-    }
+        "caption": "Bookmarks: Remove A Bookmark",
+        "command": "remove_bookmark",
+    },
+    {
+        "caption": "Bookmarks: Remove All Bookmarks (Clear Bookmarks)",
+        "command": "remove_all_bookmarks",
+    },
 ]
