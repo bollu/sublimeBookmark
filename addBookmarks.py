@@ -5,10 +5,10 @@ from . import common
 
 
 
-class AddBookmarkCommand(sublime_plugin.WindowCommand, common.baseBookmarkCommand):
+class AddBookmarkCommand(sublime_plugin.WindowCommand, common.BaseBookmarkCommand):
 	def __init__(self, window):
 		self.thread = None
-		common.baseBookmarkCommand.__init__(self, window)
+		common.BaseBookmarkCommand.__init__(self, window)
 
 	def run(self):
 		if self.thread is not None:
@@ -20,7 +20,7 @@ class AddBookmarkCommand(sublime_plugin.WindowCommand, common.baseBookmarkComman
 class AddBookmarkHandler(threading.Thread):
 	def __init__(self, window, addBookmarkCommand):
 		self.window = window
-		self.bookmarks = common.getBookmarks()
+		self.bookmarks = common.get_bookmarks()
 
 		threading.Thread.__init__(self)  
 		
@@ -30,18 +30,20 @@ class AddBookmarkHandler(threading.Thread):
 		view = self.window.active_view()
 		defaultString = ""
 
-		self.window.show_input_panel("Add Bookmark", defaultString, self.Done_, None, self.Cancel_)
+		self.window.show_input_panel("Add Bookmark", defaultString, self._done, None, self._cancel)
 	
-	def Cancel_(self):
+
+	def _cancel(self):		
 		return
 
-	def Done_(self, viewString):
+
+	def _done(self, viewString):
 		bookmark = common.Bookmark(self.window, viewString)
-		bookmark.MarkGutter()
-		bookmark.printDbg()
+		bookmark.mark_gutter()
+		bookmark.print_dbg()
 
 		self.bookmarks.append(bookmark)
 
-		common.setBookmarks(self.bookmarks)
+		common.set_bookmarks(self.bookmarks)
 		return
 		

@@ -1,32 +1,30 @@
 import sublime, sublime_plugin
-from pickle import dump, load
 import threading 
 
 from . import common
 
-class RemoveAllBookmarksCommand(sublime_plugin.WindowCommand, common.baseBookmarkCommand):
+class RemoveAllBookmarksCommand(sublime_plugin.WindowCommand, common.BaseBookmarkCommand):
 	def __init__(self, window):
-		common.baseBookmarkCommand.__init__(self, window)
+		common.BaseBookmarkCommand.__init__(self, window)
 
 	def run(self):
 		for bookmark in common.gBookmarks:
-			bookmark.Remove()
+			bookmark.remove()
 		
 		emptyBookmarks = []
-		common.setBookmarks(emptyBookmarks)
+		common.set_bookmarks(emptyBookmarks)
 
 
-class RemoveBookmarkCommand(sublime_plugin.WindowCommand, common.baseBookmarkCommand):
+class RemoveBookmarkCommand(sublime_plugin.WindowCommand, common.BaseBookmarkCommand):
 	def __init__(self, window):
 		self.thread = None
-		common.baseBookmarkCommand.__init__(self, window)
-		self.load_()
+		common.BaseBookmarkCommand.__init__(self, window)
 
 	def run(self):
 		if self.thread is not None:
 			self.thread.join()
 
-		self.load_() 
+		self._load() 
 
 		if len(self.bookmarks) == 0:
 			sublime.status_message("no bookmarks to goto!")
@@ -39,7 +37,7 @@ class RemoveBookmarkCommand(sublime_plugin.WindowCommand, common.baseBookmarkCom
 class RemoveBookmarkHandler(threading.Thread):
 	def __init__(self, window):
 		self.window = window
-		self.bookmarks = common.getBookmarks()
+		self.bookmarks = common.get_bookmarks()
 
 		self.originalFile = common.Bookmark(window, "originalFile")
 
@@ -49,30 +47,32 @@ class RemoveBookmarkHandler(threading.Thread):
 	def run(self):
 		view = self.window.active_view()
 
-		bookmarkItems = common.createBookmarksPanelItems(self.window, self.bookmarks)
-		self.window.show_quick_panel(bookmarkItems, self.Done_, sublime.MONOSPACE_FONT, 1, self.Highlighted_)
+		bookmarkItems = common.create_bookmarks_panel_items(self.window, self.bookmarks)
+		self.window.show_quick_panel(bookmarkItems, self._done, sublime.MONOSPACE_FONT, 1, self._highlighted)
 
 
-	def Done_(self, index):
+	def _done(self, index):
 		#first go back to the original file (from where removeBookmars was called from...)
-		self.originalFile.Goto(self.window, True)
+		self.originalFile.goto(self.window, True)
 
 		if index < 0:			
-			common.gLog("Canceled Remove Bookmark")
+			common.gLog("Canceled remove Bookmark")
 		else:
 			
 			#delete the bookmark in my personal index
-			self.bookmarks[index].Remove()
+			self.bookmarks[index].remove()
 			del self.bookmarks[index]
 
 			#update the global bookmarks list
-			common.setBookmarks(self.bookmarks)
+			common.set_bookmarks(self.bookmarks)
 
 			common.gLog("Removed Bookmark")
 
-	def Highlighted_(self, index):
-		self.GotoBookmark_(index)
 
-	def GotoBookmark_(self, index):
+	def _highlighted(self, index):
+		self._goto_bookmark(index)
+
+
+	def _goto_bookmark(self, index):
 		selectedBookmark = self.bookmarks[index]
-		selectedBookmark.Goto(self.window, False)
+		selectedBookmark.goto(self.window, False)

@@ -1,14 +1,14 @@
 import sublime, sublime_plugin
 from . import common
 	
-class bookmarkSaver(sublime_plugin.EventListener):
+class BookmarkSaver(sublime_plugin.EventListener):
 
 	def on_modified_async(self, view):
-		common.writeBookmarksToDisk()
+		common._write_bookmarks_to_disk()
 
-		
+	
 	def on_pre_save_async(self, view):
-		common.writeBookmarksToDisk()
+		common._write_bookmarks_to_disk()
 
 	
 	
