@@ -1,3 +1,4 @@
+
 [
 	{
 		"caption": "Edit",
@@ -42,7 +43,19 @@
 								"command": "open_file",
 								"args": {"file": "${packages}/User/SublimeBookmarks.sublime-settings"},
 								"caption": "Settings – User"
-							}
+							},
+							{ "caption": "-" },
+                            {
+                                "command": "open_file",
+                                "args": {"file": "${packages}/SublimeBookmarks/Default.sublime-keymap"},
+                                "caption": "Key Bindings – Default"
+                            },
+                            {
+                                "command": "open_file", 
+                                "args": {"file": "${packages}/User/Default.sublime-keymap"},
+                                "caption": "Key Bindings – User"
+                            },
+                            { "caption": "-" }
 						]
 					}
 				]

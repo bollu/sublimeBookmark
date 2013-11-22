@@ -1,0 +1,9 @@
+[  
+	//keys are unbound by default. Bind by editing your User key bindings
+	//goto a bookmark
+    { "keys": [""], "command": "goto_bookmark" },
+    //add a bookmark
+    { "keys": [""], "command": "add_bookmark" },
+    //remove a bookmark
+    { "keys": [""], "command": "remove_bookmark" }
+]  
