@@ -12,7 +12,8 @@ g_BOOKMARK_LIST = None
 global g_BOOKMARK_COUNT
 g_BOOKMARK_COUNT = 0
 
-
+global g_VERSION
+g_VERSION = "1.0.0"
 
 def g_log(str):
 	if(True):
@@ -154,6 +155,8 @@ def _write_bookmarks_to_disk():
 	g_SAVE_PATH = dirname(sublime.packages_path()) + '/Local/sublimeBookmarks.pickle'
 	
 	pickleFile = open(g_SAVE_PATH, "wb")
+
+	dump(g_VERSION, pickleFile)
 	dump(g_BOOKMARK_LIST, pickleFile)
 	dump(g_BOOKMARK_COUNT, pickleFile)
 
@@ -171,6 +174,15 @@ def _read_bookmarks_from_disk():
 		g_log("loading bookmarks from disk. Path: " + g_SAVE_PATH)
 
 		pickleFile = open(g_SAVE_PATH, "rb")
+		pickleVersion = load(pickleFile)
+
+		#wrong version :( we cant load
+		if (pickleVersion != g_VERSION):
+			g_log("invalid pickle version. loading defaults Path:" + g_SAVE_PATH)
+			g_BOOKMARK_LIST = []
+			g_BOOKMARK_COUNT = 0
+			return
+
 		g_BOOKMARK_LIST = load(pickleFile)
 		g_BOOKMARK_COUNT = load(pickleFile)
 
@@ -179,6 +191,7 @@ def _read_bookmarks_from_disk():
 	else:
 		g_log("no bookmark load file found. Path:" + g_SAVE_PATH)
 		g_BOOKMARK_LIST = []
+		g_BOOKMARK_COUNT = 0
 
 
 #panel creation code----------------------------
