@@ -3,7 +3,7 @@ sublimeBookmark
 
 a better bookmark system for SublimeText
 
-![demo gif](https://mediacru.sh/isyhPHU37XOT#)
+![demo gif](https://mediacru.sh/isyhPHU37XOT/frame)
 
 Motivation
 ==========
