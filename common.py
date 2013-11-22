@@ -40,13 +40,16 @@ class Bookmark:
 		#subl is weird. It sets project_file_name() to None -_-
 		self.projectPath = _get_current_project_path(window)
 
+
 		#caution: calculated from (0,0) NOT (1,1)
 		(row,col) = view.rowcol(view.sel()[0].begin())
 		self.row = row				
 		self.col = col
 
+
 		pt = self.view.text_point(self.row, 0)
-		self.lineRegion =  self.view.line(pt)
+		self.region =  self.view.line(pt)
+
 
 		global g_BOOKMARK_COUNT
 		self.index = g_BOOKMARK_COUNT
@@ -58,8 +61,7 @@ class Bookmark:
 
 	def goto(self, window, useColumnInfo):
 		view = window.open_file(self.filePath) 
-		view.show_at_center(self.lineRegion)
-
+		view.show_at_center(self._get_personal_region())
 
 	def remove(self):
 		self.view.erase_regions(self._get_region_tag())
@@ -67,12 +69,11 @@ class Bookmark:
 
 	def mark_gutter(self):
 		#overwrite the current region
-		self.view.run_command("select_all_bookmarks", self._get_region_tag())
-		self.view.add_regions(self._get_region_tag(), [self.lineRegion], "text.plain", "bookmark", sublime.DRAW_NO_FILL)
+		self.view.add_regions(self._get_region_tag(), [self.region], "text.plain", "bookmark", sublime.DRAW_NO_FILL)
 
 
 	def get_line(self):
-		lineText = self.view.substr(self.lineRegion)
+		lineText = self.view.substr(self._get_personal_region())
 		return ' '.join(lineText.split())
 
 
@@ -95,6 +96,8 @@ class Bookmark:
 	def _get_region_tag(self):
 		return g_REGION_TAG + str(self.index)
 
+	def _get_personal_region(self):
+		return self.view.get_regions(self._get_region_tag())[0]
 	
 
 #BaseBookmarkCommand-------------------------------------

@@ -8,7 +8,7 @@ class RemoveAllBookmarksCommand(sublime_plugin.WindowCommand, common.BaseBookmar
 		common.BaseBookmarkCommand.__init__(self, window)
 
 	def run(self):
-		for bookmark in common.g_BOOKMARK_LIST:
+		for bookmark in common.get_bookmarks():
 			bookmark.remove()
 		
 		emptyBookmarks = []
