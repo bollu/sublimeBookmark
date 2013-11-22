@@ -16,7 +16,7 @@ class GotoBookmarkCommand(sublime_plugin.WindowCommand, common.BaseBookmarkComma
 
 		self._load()
 
-		if len(self.bookmarks) == 0:
+		if not self.bookmarks:
 			sublime.status_message("no bookmarks to goto!")
 			return 0
 			
@@ -47,11 +47,11 @@ class GotoBookmarkHandler(threading.Thread):
 		if index == -1:
 			#if cancelled, go back to original file
 			self.originalFile.goto(self.window, False)
-			common.gLog("Cancelled goto")
+			common.g_log("Cancelled goto")
 
 		else:
 			self._goto_bookmark(index)
-			common.gLog("Done with goto")
+			common.g_log("Done with goto")
 
 
 	def _highlighted(self, index):

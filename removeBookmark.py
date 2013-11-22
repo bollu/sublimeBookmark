@@ -8,7 +8,7 @@ class RemoveAllBookmarksCommand(sublime_plugin.WindowCommand, common.BaseBookmar
 		common.BaseBookmarkCommand.__init__(self, window)
 
 	def run(self):
-		for bookmark in common.gBookmarks:
+		for bookmark in common.g_BOOKMARK_LIST:
 			bookmark.remove()
 		
 		emptyBookmarks = []
@@ -26,7 +26,7 @@ class RemoveBookmarkCommand(sublime_plugin.WindowCommand, common.BaseBookmarkCom
 
 		self._load() 
 
-		if len(self.bookmarks) == 0:
+		if not self.bookmarks:
 			sublime.status_message("no bookmarks to goto!")
 			return 0
 
@@ -56,7 +56,7 @@ class RemoveBookmarkHandler(threading.Thread):
 		self.originalFile.goto(self.window, True)
 
 		if index < 0:			
-			common.gLog("Canceled remove Bookmark")
+			common.g_log("Canceled remove Bookmark")
 		else:
 			
 			#delete the bookmark in my personal index
@@ -66,7 +66,7 @@ class RemoveBookmarkHandler(threading.Thread):
 			#update the global bookmarks list
 			common.set_bookmarks(self.bookmarks)
 
-			common.gLog("Removed Bookmark")
+			common.g_log("Removed Bookmark")
 
 
 	def _highlighted(self, index):
