@@ -37,11 +37,11 @@ class AddBookmarkHandler(threading.Thread):
 
 	def Done_(self, viewString):
 		bookmark = common.Bookmark(self.window, viewString)
+		bookmark.MarkGutter()
 		bookmark.printDbg()
+
 		self.bookmarks.append(bookmark)
 
-		
 		common.setBookmarks(self.bookmarks)
-		common.updateGutter(self.window.active_view())
 		return
 		

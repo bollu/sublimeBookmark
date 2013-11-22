@@ -4,15 +4,16 @@ import threading
 
 from . import common
 
-class RemoveAllBookmarksCommand(sublime_plugin.WindowCommand):
+class RemoveAllBookmarksCommand(sublime_plugin.WindowCommand, common.baseBookmarkCommand):
+	def __init__(self, window):
+		common.baseBookmarkCommand.__init__(self, window)
+
 	def run(self):
-	
 		for bookmark in common.gBookmarks:
 			bookmark.Remove()
 		
 		emptyBookmarks = []
 		common.setBookmarks(emptyBookmarks)
-		common.updateGutter(self.window.active_view())
 
 
 class RemoveBookmarkCommand(sublime_plugin.WindowCommand, common.baseBookmarkCommand):
@@ -66,15 +67,11 @@ class RemoveBookmarkHandler(threading.Thread):
 
 			#update the global bookmarks list
 			common.setBookmarks(self.bookmarks)
-			common.updateGutter(self.window.active_view())
 
 			common.gLog("Removed Bookmark")
 
-		
-
 	def Highlighted_(self, index):
 		self.GotoBookmark_(index)
-
 
 	def GotoBookmark_(self, index):
 		selectedBookmark = self.bookmarks[index]

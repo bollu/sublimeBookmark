@@ -6,16 +6,14 @@ from pickle import dump, load
 from os.path import dirname, isfile
 
 gSavePath = dirname(sublime.packages_path()) + '/Local/sublimeBookmarks.pickle'
-gRegionTag = "sublime_Bookmarks"
+gRegionTag = "sublime_Bookmarks_"
+
 
 global gBookmarks
-#gBookmarks = None
-gBookmarks = []
+gBookmarks = None
 
-
-
-global gRegions
-gRegions = []
+global gIndex
+gIndex = 0
 
 
 
@@ -29,6 +27,7 @@ def getCurrentProjectPath(window):
 	project = window.project_file_name()
 	if project is None:
 		return ""
+		
 	return project
 
 class Bookmark:
@@ -38,6 +37,10 @@ class Bookmark:
 
 		self.name = name
 		self.filePath = view.file_name()
+		
+		global gIndex
+		self.index = gIndex
+		gIndex = gIndex + 1
 
 		#subl is weird. It sets project_file_name() to None -_-
 		self.projectPath = getCurrentProjectPath(window)
@@ -51,33 +54,23 @@ class Bookmark:
 		pt = self.view.text_point(self.row, self.col)
 		self.lineRegion =  self.view.line(pt)
 
-		self.MarkGutter()
+	def __del__(self):
+		self.Remove()
 
-	
+	def GetRegionTag_(self):
+		return gRegionTag + str(self.index)
+
 	def Goto(self, window, useColumnInfo):
 		view = window.open_file(self.filePath) 
-		view.show(self.lineRegion)
-		
-		#rowColStr = ":" + str(self.row) + ":" + str(self.col)
-		#window.open_file(self.filePath + rowColStr, sublime.TRANSIENT | sublime.ENCODED_POSITION)
+		view.show_at_center(self.lineRegion)
 
 	def Remove(self):
-		global gRegions
-
-		#gRegions = []
-		gRegions.remove(self.lineRegion)
-		self.view.add_regions(gRegionTag, gRegions, "text.plain", "bookmark", sublime.DRAW_NO_FILL)
+		self.view.erase_regions(self.GetRegionTag_())
 
 
 	def MarkGutter(self):
-		global gRegions
-		self.region = sublime.Region(self.pt)
-		if self.region in gRegions:
-			return
-			
-		gRegions.append(self.lineRegion)
 		#overwrite the current region
-		self.view.add_regions(gRegionTag, gRegions, "text.plain", "bookmark", sublime.DRAW_NO_FILL)
+		self.view.add_regions(self.GetRegionTag_(), [self.lineRegion], "text.plain", "bookmark", sublime.DRAW_NO_FILL)
 
 
 	def getLine(self):
@@ -86,6 +79,7 @@ class Bookmark:
 		lineText = self.view.substr(lineRegion)
 
 		return ' '.join(lineText.split())
+
 
 	def getRow(self):
 		return self.row
@@ -112,8 +106,7 @@ class Bookmark:
 class baseBookmarkCommand:
 	def __init__(self, window):
 		self.window = window
-		#self.bookmarks = None
-		self.bookmarks = []
+
 	def save_(self):
 		setBookmarks(self.bookmarks)
 	
@@ -144,13 +137,9 @@ def setBookmarks(bookmarks):
 	gLog("set global bookmarks")
 
 def writeBookmarksToDisk():
-	return
-	pass
-
 	global gBookmarks
 	global gSavePath
-	global gRegions
-
+	global gIndex
 
 	assert gBookmarks != None, "trying to write *None* bookmarks to disk"
 
@@ -158,18 +147,14 @@ def writeBookmarksToDisk():
 	
 	pickleFile = open(gSavePath, "wb")
 	pickle.dump(gBookmarks, pickleFile)
-	pickle.dump(gRegions, pickleFile)
+	pickle.dump(gIndex, pickleFile)
 
 	gLog("wrote bookmarks to disk. Path: " + gSavePath)
 
 def readBookmarksFromDisk():
-	return
-	pass
-
-
 	global gBookmarks
 	global gSavePath
-	global gRegions
+	global gIndex
 
 	gSavePath = dirname(sublime.packages_path()) + '/Local/sublimeBookmarks.pickle'
 
@@ -177,34 +162,13 @@ def readBookmarksFromDisk():
 		gLog("loading bookmarks from disk. Path: " + gSavePath)
 		pickleFile = open(gSavePath, "rb")
 		gBookmarks = pickle.load(pickleFile)
-		gRegions = pickle.load(pickleFile)
+		gIndex = pickle.load(pickleFile)
+
+		for bookmark in gBookmarks:
+			bookmark.MarkGutter()
 	else:
 		gLog("no bookmark load file found. Path:" + gSavePath)
 		gBookmarks = []
-
-#Gutters-------------------------------------
-
-def updateGutter(view):
-	return
-	pass
-	regions = []
-	for bookmark in gBookmarks:
-		bookmark.MarkGutter()
-
-	# currentProject = getCurrentProjectPath(view.window())
-
-	# filePath = view.file_name()
-	# bookmarks = getBookmarks()
-
-	# regions =  []
-	# for bookmark in bookmarks:
-	# 	if bookmark.getFilePath() == filePath:
-	# 		pt = view.text_point(bookmark.getRow(), 0)
-	# 		regions.append(sublime.Region(pt))
-
-	# view.erase_regions(gRegionTag)
-	# view.add_regions(gRegionTag, regions, scope="string", icon="bookmark")
-
 
 
 #panel creation code----------------------------
