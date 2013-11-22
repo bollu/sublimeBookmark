@@ -6,11 +6,12 @@ class gutterMarker(sublime_plugin.TextCommand):
 	def __init__(self, view):
 		self.view = view
 		common.updateGutter(self.view)
-		
+
 	def run(self, edit):
+		common.updateBookmarks(self.view)
 		common.updateGutter(self.view)
 
-class bookmarkSaver(sublime_plugin.EventListener):
+class bookmarkWatcher(sublime_plugin.EventListener):
 
 	def on_modified_async(self, view):
 		common.updateGutter(view)

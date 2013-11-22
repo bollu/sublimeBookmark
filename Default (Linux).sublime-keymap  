@@ -1,3 +1,8 @@
 [  
-    { "keys": ["ctrl+shift+q"], "command": "goto_bookmark" }
+	#goto a bookmark
+    { "keys": [""], "command": "goto_bookmark" }
+    #add a bookmark
+    { "keys": [""], "command": "add_bookmark" }
+    #remove a bookmark
+    { "keys": [""], "command": "remove_bookmark" }
 ]  

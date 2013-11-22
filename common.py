@@ -1,4 +1,6 @@
 import sublime, sublime_plugin
+from sublime import *
+
 import pickle
 from pickle import dump, load
 from os.path import dirname, isfile
@@ -7,7 +9,13 @@ gSavePath = dirname(sublime.packages_path()) + '/Local/sublimeBookmarks.pickle'
 gRegionTag = "sublime_Bookmarks"
 
 global gBookmarks
-gBookmarks = None
+#gBookmarks = None
+gBookmarks = []
+
+
+
+global gRegions
+gRegions = []
 
 
 
@@ -15,12 +23,13 @@ def gLog(str):
 	if(True):
 		print ("\n" + str)
 
-def getCurrentProject(window):
+
+#Bookmark related code-----------------------------------------------------
+def getCurrentProjectPath(window):
 	project = window.project_file_name()
 	if project is None:
 		return ""
 	return project
-
 
 class Bookmark:
 	def __init__(self, window, name):
@@ -31,17 +40,45 @@ class Bookmark:
 		self.filePath = view.file_name()
 
 		#subl is weird. It sets project_file_name() to None -_-
-		self.project = getCurrentProject(window)
+		self.projectPath = getCurrentProjectPath(window)
+
 
 		#caution: calculated from (0,0) NOT (1,1)
 		(row,col) = view.rowcol(view.sel()[0].begin())
-		self.row = row
+		self.row = row				
 		self.col = col
 
-		
+		pt = self.view.text_point(self.row, self.col)
+		self.lineRegion =  self.view.line(pt)
+
+		self.MarkGutter()
+
+	
 	def Goto(self, window, useColumnInfo):
-		rowColStr = ":" + str(self.row) + ":" + str(self.col)
-		window.open_file(self.filePath + rowColStr, sublime.TRANSIENT | sublime.ENCODED_POSITION)
+		view = window.open_file(self.filePath) 
+		view.show(self.lineRegion)
+		
+		#rowColStr = ":" + str(self.row) + ":" + str(self.col)
+		#window.open_file(self.filePath + rowColStr, sublime.TRANSIENT | sublime.ENCODED_POSITION)
+
+	def Remove(self):
+		global gRegions
+
+		#gRegions = []
+		gRegions.remove(self.lineRegion)
+		self.view.add_regions(gRegionTag, gRegions, "text.plain", "bookmark", sublime.DRAW_NO_FILL)
+
+
+	def MarkGutter(self):
+		global gRegions
+		self.region = sublime.Region(self.pt)
+		if self.region in gRegions:
+			return
+			
+		gRegions.append(self.lineRegion)
+		#overwrite the current region
+		self.view.add_regions(gRegionTag, gRegions, "text.plain", "bookmark", sublime.DRAW_NO_FILL)
+
 
 	def getLine(self):
 		pt = self.view.text_point(self.row, self.col)
@@ -62,21 +99,21 @@ class Bookmark:
 	def getFilePath(self):
 		return self.filePath
 	
-	def getProject(self):
-		return self.project
+	def getProjectPath(self):
+		return self.projectPath
 
 
 	def printDbg(self):
-		gLog ("New Bookmark: " + self.name + " | " + str(self.row) + ": " + str(self.col) + "| Project: " + self.project)
+		gLog ("New Bookmark: " + self.name + " | " + str(self.row) + ": " + str(self.col) + "| Project: " + self.projectPath)
 
-
+	
 
 #baseBookmarkCommand-------------------------------------
 class baseBookmarkCommand:
 	def __init__(self, window):
 		self.window = window
-		self.bookmarks = None
-
+		#self.bookmarks = None
+		self.bookmarks = []
 	def save_(self):
 		setBookmarks(self.bookmarks)
 	
@@ -107,8 +144,13 @@ def setBookmarks(bookmarks):
 	gLog("set global bookmarks")
 
 def writeBookmarksToDisk():
+	return
+	pass
+
 	global gBookmarks
 	global gSavePath
+	global gRegions
+
 
 	assert gBookmarks != None, "trying to write *None* bookmarks to disk"
 
@@ -116,12 +158,18 @@ def writeBookmarksToDisk():
 	
 	pickleFile = open(gSavePath, "wb")
 	pickle.dump(gBookmarks, pickleFile)
+	pickle.dump(gRegions, pickleFile)
 
 	gLog("wrote bookmarks to disk. Path: " + gSavePath)
 
 def readBookmarksFromDisk():
+	return
+	pass
+
+
 	global gBookmarks
 	global gSavePath
+	global gRegions
 
 	gSavePath = dirname(sublime.packages_path()) + '/Local/sublimeBookmarks.pickle'
 
@@ -129,7 +177,7 @@ def readBookmarksFromDisk():
 		gLog("loading bookmarks from disk. Path: " + gSavePath)
 		pickleFile = open(gSavePath, "rb")
 		gBookmarks = pickle.load(pickleFile)
-
+		gRegions = pickle.load(pickleFile)
 	else:
 		gLog("no bookmark load file found. Path:" + gSavePath)
 		gBookmarks = []
@@ -137,19 +185,25 @@ def readBookmarksFromDisk():
 #Gutters-------------------------------------
 
 def updateGutter(view):
-	currentProject = getCurrentProject(view.window())
+	return
+	pass
+	regions = []
+	for bookmark in gBookmarks:
+		bookmark.MarkGutter()
 
-	filePath = view.file_name()
-	bookmarks = getBookmarks()
+	# currentProject = getCurrentProjectPath(view.window())
 
-	regions =  []
-	for bookmark in bookmarks:
-		if bookmark.getFilePath() == filePath:
-			pt = view.text_point(bookmark.getRow(), 0)
-			regions.append(sublime.Region(pt))
+	# filePath = view.file_name()
+	# bookmarks = getBookmarks()
 
-	view.erase_regions(gRegionTag)
-	view.add_regions(gRegionTag, regions, scope="string", icon="bookmark")
+	# regions =  []
+	# for bookmark in bookmarks:
+	# 	if bookmark.getFilePath() == filePath:
+	# 		pt = view.text_point(bookmark.getRow(), 0)
+	# 		regions.append(sublime.Region(pt))
+
+	# view.erase_regions(gRegionTag)
+	# view.add_regions(gRegionTag, regions, scope="string", icon="bookmark")
 
 
 
@@ -164,21 +218,23 @@ def capStringBegin(string, length):
 
 
 def createBookmarksPanelItems(window, bookmarks):
-		currentProject = getCurrentProject(window)
+		currentProject = getCurrentProjectPath(window)
 
 		bookmarkItems = []
 		gLog("currentProject: " + currentProject)
 
 		for bookmark in bookmarks:
-			bookmarkProject = bookmark.getProject()
+			bookmarkProject = bookmark.getProjectPath()
 		
 			bookmark.printDbg()
 
 			#this is not yet perfect. will have to revise this
 			if True or (currentProject == "") or (currentProject.lower() == bookmarkProject.lower()):
+				
 				bookmarkName = bookmark.getName()
-				bookmarkLine = capStringEnd(bookmark.getLine(), 50)
-				bookmarkFile = capStringBegin(bookmark.getFilePath(), 50)
+				
+				bookmarkLine = capStringEnd(bookmark.getLine(), 55)
+				bookmarkFile = capStringBegin(bookmark.getFilePath(), 55)
 
 				bookmarkItems.append( [bookmarkName, bookmarkLine, bookmarkFile] )
 				

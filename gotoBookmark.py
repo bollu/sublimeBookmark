@@ -20,7 +20,7 @@ class GotoBookmarkCommand(sublime_plugin.WindowCommand, common.baseBookmarkComma
 		if len(self.bookmarks) == 0:
 			sublime.status_message("no bookmarks to goto!")
 			return 0
-
+			
 		self.thread = GotoBookmarkHandler(self.window, self)
 		self.thread.start()
 

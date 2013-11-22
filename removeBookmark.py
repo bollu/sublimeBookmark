@@ -6,6 +6,10 @@ from . import common
 
 class RemoveAllBookmarksCommand(sublime_plugin.WindowCommand):
 	def run(self):
+	
+		for bookmark in common.gBookmarks:
+			bookmark.Remove()
+		
 		emptyBookmarks = []
 		common.setBookmarks(emptyBookmarks)
 		common.updateGutter(self.window.active_view())
@@ -57,6 +61,7 @@ class RemoveBookmarkHandler(threading.Thread):
 		else:
 			
 			#delete the bookmark in my personal index
+			self.bookmarks[index].Remove()
 			del self.bookmarks[index]
 
 			#update the global bookmarks list
