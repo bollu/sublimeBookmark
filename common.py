@@ -67,6 +67,7 @@ class Bookmark:
 
 	def mark_gutter(self):
 		#overwrite the current region
+		self.view.run_command("select_all_bookmarks", self._get_region_tag())
 		self.view.add_regions(self._get_region_tag(), [self.lineRegion], "text.plain", "bookmark", sublime.DRAW_NO_FILL)
 
 
