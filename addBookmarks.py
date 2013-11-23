@@ -16,7 +16,10 @@ class AddBookmarkCommand(sublime_plugin.WindowCommand, common.BaseBookmarkComman
 
 		self.thread = AddBookmarkHandler(self.window, self)
 		self.thread.start()
-		
+	
+	def description(self):
+		return "Add a Bookmark"
+
 class AddBookmarkHandler(threading.Thread):
 	def __init__(self, window, addBookmarkCommand):
 		self.window = window
@@ -46,4 +49,4 @@ class AddBookmarkHandler(threading.Thread):
 
 		common.set_bookmarks(self.bookmarks)
 		return
-		
+	

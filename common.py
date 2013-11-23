@@ -2,6 +2,13 @@ import sublime, sublime_plugin
 from pickle import dump, load
 from os.path import dirname, isfile
 
+from . import fileLock
+import sys
+
+#Holy crap Turing is rolling in his grave right now
+#This is a monstrosity. Have to rewrite as an FSM or something.
+#this is *worse* than spaghetti code.
+
 g_SAVE_PATH = dirname(sublime.packages_path()) + '/Local/sublimeBookmarks.pickle'
 g_REGION_TAG = "sublime_Bookmarks_"
 
@@ -13,7 +20,7 @@ global g_BOOKMARK_COUNT
 g_BOOKMARK_COUNT = 0
 
 global g_VERSION
-g_VERSION = "1.0.0"
+g_VERSION = "1.0.1"
 
 def g_log(str):
 	if(True):
@@ -31,7 +38,7 @@ def _get_current_project_path(window):
 
 
 class Bookmark:
-	def __init__(self, window, name):
+	def __init__(self, window, name, visible=True):
 		view = window.active_view()
 		self.view = view
 
@@ -56,7 +63,9 @@ class Bookmark:
 		self.index = g_BOOKMARK_COUNT
 		g_BOOKMARK_COUNT = g_BOOKMARK_COUNT + 1
 
-
+		self.visible = visible
+		self.mark_gutter()
+		
 	def __del__(self):
 		self.remove()
 
@@ -69,9 +78,11 @@ class Bookmark:
 
 
 	def mark_gutter(self):
-		#overwrite the current region
-		self.view.add_regions(self._get_region_tag(), [self.region], "text.plain", "bookmark", sublime.DRAW_NO_FILL)
-
+		if(self.visible):
+			#overwrite the current region
+			self.view.add_regions(self._get_region_tag(), [self.region], "text.plain", "bookmark", sublime.DRAW_NO_FILL)
+		else:
+			self.view.add_regions(self._get_region_tag(), [self.region], "text.plain",  "", sublime.HIDDEN)
 
 	def get_line(self):
 		lineText = self.view.substr(self._get_personal_region())
@@ -101,6 +112,21 @@ class Bookmark:
 		return self.view.get_regions(self._get_region_tag())[0]
 	
 
+	#Pickling Code (Copy pasted)
+	def __getstate__(self):
+
+		# Copy the object's state from self.__dict__ which contains
+		# all our instance attributes. Always use the dict.copy()
+		# method to avoid modifying the original state.
+		state = self.__dict__.copy()
+		return state
+
+	def __setstate__(self, state):
+		# Restore instance attributes (i.e., filename and lineno).
+		self.__dict__.update(state)
+		self.mark_gutter()
+  
+
 #BaseBookmarkCommand-------------------------------------
 class BaseBookmarkCommand:
 	def __init__(self, window):
@@ -115,10 +141,13 @@ class BaseBookmarkCommand:
 		self.bookmarks = get_bookmarks()
 
 #save / load code----------------------------------------
+def get_save_path():
+	return dirname(sublime.packages_path()) + '/Local/sublimeBookmarks.pickle'
+
 def get_bookmarks():
 	global g_BOOKMARK_LIST  #<- only need this when writing to a global
 
-	g_SAVE_PATH = dirname(sublime.packages_path()) + '/Local/sublimeBookmarks.pickle'
+	g_SAVE_PATH = get_save_path()
 
 	#The first time sublime text loads, g_BOOKMARK_LIST will be None. So, load bookmarks
 	if g_BOOKMARK_LIST is not None:
@@ -152,56 +181,86 @@ def _write_bookmarks_to_disk():
 		_read_bookmarks_from_disk()
 		return
 
-	g_SAVE_PATH = dirname(sublime.packages_path()) + '/Local/sublimeBookmarks.pickle'
+	g_SAVE_PATH = get_save_path()
 	
-	pickleFile = open(g_SAVE_PATH, "wb")
 
-	dump(g_VERSION, pickleFile)
-	dump(g_BOOKMARK_LIST, pickleFile)
-	dump(g_BOOKMARK_COUNT, pickleFile)
+	with fileLock.FileLock(g_SAVE_PATH):
 
-	g_log("wrote bookmarks to disk. Path: " + g_SAVE_PATH)
+		try:
+			pickleFile = open(g_SAVE_PATH, "wb")
+		except  Exception:
+			g_log('Error when opening pickle')
+			_load_defaults()
 
+		dump(g_VERSION, pickleFile)
+		dump(g_BOOKMARK_LIST, pickleFile)
+		dump(g_BOOKMARK_COUNT, pickleFile)
+
+		g_log("wrote bookmarks to disk. Path: " + g_SAVE_PATH)
 
 def _read_bookmarks_from_disk():
 	global g_BOOKMARK_LIST
 	global g_SAVE_PATH
 	global g_BOOKMARK_COUNT
 
-	g_SAVE_PATH = dirname(sublime.packages_path()) + '/Local/sublimeBookmarks.pickle'
+	g_SAVE_PATH = get_save_path()
 
-	if isfile(g_SAVE_PATH):
-		g_log("loading bookmarks from disk. Path: " + g_SAVE_PATH)
-
-		pickleFile = open(g_SAVE_PATH, "rb")
-		pickleVersion = load(pickleFile)
-
-		#wrong version :( we cant load
-		if (pickleVersion != g_VERSION):
-			g_log("invalid pickle version. loading defaults Path:" + g_SAVE_PATH)
-			g_BOOKMARK_LIST = []
-			g_BOOKMARK_COUNT = 0
-			return
-
-		g_BOOKMARK_LIST = load(pickleFile)
-		g_BOOKMARK_COUNT = load(pickleFile)
-
-		for bookmark in g_BOOKMARK_LIST:
-			bookmark.mark_gutter()
-	else:
+	if not isfile(g_SAVE_PATH):
 		g_log("no bookmark load file found. Path:" + g_SAVE_PATH)
-		g_BOOKMARK_LIST = []
-		g_BOOKMARK_COUNT = 0
+		_load_defaults()
+		return
+
+	g_log("loading bookmarks from disk. Path: " + g_SAVE_PATH)
+
+	with fileLock.FileLock(g_SAVE_PATH):
+		
+		try:
+			pickleFile = open(g_SAVE_PATH, "rb")
+
+			pickleVersion = load(pickleFile)
+			g_BOOKMARK_LIST = load(pickleFile)
+			g_BOOKMARK_COUNT = load(pickleFile)
+
+			if pickleVersion != g_VERSION:
+				g_log("Older pickle Present:" + g_SAVE_PATH)
+				_load_defaults()
+
+			
+			if g_BOOKMARK_LIST is None or g_BOOKMARK_COUNT is None:
+				g_log("Unable to load pickle correctly:" + g_SAVE_PATH)
+				_load_defaults()
+
+			for bookmark in g_BOOKMARK_LIST:
+				bookmark.mark_gutter()
+
+		except  Exception:
+			g_log('Error when opening pickle')
+			_load_defaults()
+
+		
+def _load_defaults():
+	global g_BOOKMARK_LIST
+	global g_BOOKMARK_COUNT
+
+	g_BOOKMARK_LIST = []
+	g_BOOKMARK_COUNT = 0
 
 
 #panel creation code----------------------------
 
 def _ellipsis_string_end(string, length):
-		return string if len(string) <= length else string[ 0 : length - 3] + '...'
+		#I have NO idea why the hell this would happen. But it's happening
+		if string is None:
+			return ""
+		else:
+			return string if len(string) <= length else string[ 0 : length - 3] + '...'
 
 
 def _ellipsis_string_begin(string, length):
-		return string if len(string) <= length else '...' + string[ len(string) + 3 - (length)  : len(string) ] 
+		if string is None:
+			return ""
+		else:	
+			return string if len(string) <= length else '...' + string[ len(string) + 3 - (length)  : len(string) ] 
 
 
 def create_bookmarks_panel_items(window, bookmarks):

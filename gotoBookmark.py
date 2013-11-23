@@ -23,6 +23,8 @@ class GotoBookmarkCommand(sublime_plugin.WindowCommand, common.BaseBookmarkComma
 		self.thread = GotoBookmarkHandler(self.window, self)
 		self.thread.start()
 
+		def description(self):
+			return "Goto a Bookmark"
 
 class GotoBookmarkHandler(threading.Thread):
 	def __init__(self, window, BookmarkCommand):
@@ -30,7 +32,7 @@ class GotoBookmarkHandler(threading.Thread):
 		
 		self.bookmarks = common.get_bookmarks() 
 		#keep a reference to the original file if the user cancels
-		self.originalFile = common.Bookmark(window, "originalFile")
+		self.originalFile = common.Bookmark(window, "originalFile", visible=False)
 
 		threading.Thread.__init__(self)  
 

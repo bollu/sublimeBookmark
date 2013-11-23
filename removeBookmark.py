@@ -14,6 +14,8 @@ class RemoveAllBookmarksCommand(sublime_plugin.WindowCommand, common.BaseBookmar
 		emptyBookmarks = []
 		common.set_bookmarks(emptyBookmarks)
 
+	def description(self):
+		return "Remove **all** Bookmarks. Be careful!"
 
 class RemoveBookmarkCommand(sublime_plugin.WindowCommand, common.BaseBookmarkCommand):
 	def __init__(self, window):
@@ -21,7 +23,7 @@ class RemoveBookmarkCommand(sublime_plugin.WindowCommand, common.BaseBookmarkCom
 		common.BaseBookmarkCommand.__init__(self, window)
 
 	def run(self):
-		if self.thread is not None:
+		if self.threaad is not None:
 			self.thread.join()
 
 		self._load() 
@@ -34,12 +36,15 @@ class RemoveBookmarkCommand(sublime_plugin.WindowCommand, common.BaseBookmarkCom
 		self.thread.start()
 
 		
+	def description(self):
+		return "Remove an added Bookmark"
+
 class RemoveBookmarkHandler(threading.Thread):
 	def __init__(self, window):
 		self.window = window
 		self.bookmarks = common.get_bookmarks()
 
-		self.originalFile = common.Bookmark(window, "originalFile")
+		self.originalFile = common.Bookmark(window, "originalFile", visible=False)
 
 		threading.Thread.__init__(self)  
 
