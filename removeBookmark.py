@@ -23,7 +23,7 @@ class RemoveBookmarkCommand(sublime_plugin.WindowCommand, common.BaseBookmarkCom
 		common.BaseBookmarkCommand.__init__(self, window)
 
 	def run(self):
-		if self.threaad is not None:
+		if self.thread is not None:
 			self.thread.join()
 
 		self._load() 
