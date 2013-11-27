@@ -69,38 +69,39 @@ class Bookmark:
 
 		#set up the unique ID part first :)
 		global g_BOOKMARK_COUNT
-		self.index = g_BOOKMARK_COUNT
-		self.regionTag = g_REGION_TAG + str(self.index)
-
+		self.regionTag = g_REGION_TAG + str(g_BOOKMARK_COUNT)
 		g_BOOKMARK_COUNT = g_BOOKMARK_COUNT + 1
 
 		self.filePath = view.file_name()
 		self.projectPath = _get_current_project_path(window)
 		
 		#caution: calculated from (0,0) NOT (1,1)
-		(self.row, self.col) = view.rowcol(view.sel()[0].begin())
+		(row, col) = view.rowcol(view.sel()[0].begin())
 
-		self.pt = view.text_point(self.row, 0)
-		self.region =  view.line(self.pt)
-
-		#to get the region, we have to mark first :)
-		lineText = view.substr(self.region)
-		self.line =  ' '.join(lineText.split())
+		pt = view.text_point(row, col)
+		self.region =  view.line(pt)
+		self.a = self.region.a
+		self.b = self.region.b
 
 		#mark gutter
 		self.mark_gutter(window)
 
 
 	def _getMyView(self, window):
+
+		#the view we've saved is our view
 		if self.view is not None and self.view.file_name() == self.filePath:
 			return self.view
 			
 		prevView = window.active_view()
 
+		#the currently open view is our view
 		if prevView.file_name() == self.get_file_path():
 			self.view = prevView
 			return prevView
 
+		#none of our assumptions are true. We have to open our view and then return our
+		#view
 		myView = window.open_file(self.filePath, sublime.TRANSIENT)
 		self.view = myView
 
@@ -137,12 +138,17 @@ class Bookmark:
 		
 		if(self.visible and _should_display_bookmark(window, self)):
 			#overwrite the current region
-			myView.add_regions(self.regionTag, [self.region], "text.plain", "bookmark", sublime.DRAW_NO_FILL)
+			myView.add_regions(self.regionTag, [self.region], "text.plain", "bookmark", sublime.PERSISTENT | sublime.DRAW_NO_FILL)
 		else:
-			myView.add_regions(self.regionTag, [self.region], "text.plain",  "", sublime.HIDDEN)
+			myView.add_regions(self.regionTag, [self.region], "text.plain",  "", sublime.PERSISTENT | sublime.HIDDEN)
 
-	def get_line(self):
-		return self.line
+	def get_line(self, window):
+		myView = self._getMyView(window)
+
+		lineText = myView.substr(self.region)
+		line =  ' '.join(lineText.split())
+
+		return line
 
 	def get_name(self):
 		return self.name
@@ -157,14 +163,17 @@ class Bookmark:
 
 
 	def print_dbg(self):
-		g_log ("Bookmark: " + self.name + "row: " + str(self.row) + " | col: " + str(self.col) + "| Project: " + self.projectPath)
+		g_log ("Bookmark: " + self.name + "| Project: " + self.projectPath)
 
 	#Pickling Code (Copy pasted)---------------------------
+
+	#I need a proper way to do this
 	def update_row_column(self, window):
 
 		#get my own point and update my row and column
-		(self.row, self.col) = self._getMyView(window).rowcol(self.pt)
-		g_log("updated row, column. row: " + str(self.row) + " | col: " + str(self.col))
+		self.a = self.region.a
+		self.b = self.region.b
+		
 	def __getstate__(self):
 
 		# Copy the object's state from self.__dict__ which contains
@@ -179,9 +188,7 @@ class Bookmark:
 
 	def inflate(self, window):
 		myView = self._getMyView(window)
-
-		self.pt = myView.text_point(self.row, self.col)
-		self.region = myView.line(self.pt)
+		self.region = sublime.Region(self.a, self.b)
 
 
 #BaseBookmarkCommand-------------------------------------
@@ -346,7 +353,7 @@ def create_bookmarks_panel_items(window, bookmarks):
 		for bookmark in bookmarks:
 
 			bookmarkName = bookmark.get_name()
-			bookmarkLine = _ellipsis_string_end(bookmark.get_line(), 55)
+			bookmarkLine = _ellipsis_string_end(bookmark.get_line(window), 55)
 			bookmarkFile = _ellipsis_string_begin(bookmark.get_file_path(), 55)
 
 			bookmarkItems.append( [bookmarkName, bookmarkLine, bookmarkFile] )
