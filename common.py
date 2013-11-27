@@ -5,7 +5,7 @@ from os.path import dirname, isfile
 from . import fileLock
 import sys
 
-g_VERSION = "1.0.2"
+g_VERSION = "1.0.3"
 
 #Holy crap Turing is rolling in his grave right now
 #This is a monstrosity. Have to rewrite as an FSM or something.
@@ -384,7 +384,8 @@ def create_bookmarks_panel_items(window, bookmarks):
 def _should_display_bookmark(window, bookmark):
 	#HACK!!!
 	return True
-
+	#----------------------------------------------------------
+	
 	currentProject = _get_current_project_path(window)
 	bookmarkProject = bookmark.get_project_path()
 

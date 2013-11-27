@@ -18,7 +18,13 @@ class gutterMarker(sublime_plugin.EventListener):
 	
 		common._write_bookmarks_to_disk(window)
 
+	def on_save_async(self, view):
+		window = sublime.active_window()
 
+		for bookmark in common.get_bookmarks(window, True):
+			bookmark.update_row_column(window)
+	
+		common._write_bookmarks_to_disk(window)
 
 class BookmarkLoader(sublime_plugin.WindowCommand):
 	def run(self, window):
