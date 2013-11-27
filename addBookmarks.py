@@ -23,7 +23,7 @@ class AddBookmarkCommand(sublime_plugin.WindowCommand, common.BaseBookmarkComman
 class AddBookmarkHandler(threading.Thread):
 	def __init__(self, window, addBookmarkCommand):
 		self.window = window
-		self.bookmarks = common.get_bookmarks()
+		self.bookmarks = common.get_bookmarks(self.window)
 
 		threading.Thread.__init__(self)  
 		
@@ -42,11 +42,11 @@ class AddBookmarkHandler(threading.Thread):
 
 	def _done(self, viewString):
 		bookmark = common.Bookmark(self.window, viewString)
-		bookmark.mark_gutter()
 		bookmark.print_dbg()
 
 		self.bookmarks.append(bookmark)
 
-		common.set_bookmarks(self.bookmarks)
+		common.set_bookmarks(self.bookmarks, self.window)
+
 		return
 	

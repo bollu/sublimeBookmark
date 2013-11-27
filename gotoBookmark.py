@@ -29,8 +29,8 @@ class GotoBookmarkCommand(sublime_plugin.WindowCommand, common.BaseBookmarkComma
 class GotoBookmarkHandler(threading.Thread):
 	def __init__(self, window, BookmarkCommand):
 		self.window = window
+		self.bookmarks = common.get_bookmarks(self.window) 
 		
-		self.bookmarks = common.get_bookmarks() 
 		#keep a reference to the original file if the user cancels
 		self.originalFile = common.Bookmark(window, "originalFile", visible=False)
 

@@ -6,13 +6,15 @@ from . import common
 class RemoveAllBookmarksCommand(sublime_plugin.WindowCommand, common.BaseBookmarkCommand):
 	def __init__(self, window):
 		common.BaseBookmarkCommand.__init__(self, window)
+		self.window = window
 
 	def run(self):
-		for bookmark in common.get_bookmarks():
-			bookmark.remove()
+		#disable bookmark filters to access *all* bookmarks
+		for bookmark in common.get_bookmarks(self.window, False):
+			bookmark.remove(self.window)
 		
 		emptyBookmarks = []
-		common.set_bookmarks(emptyBookmarks)
+		common.set_bookmarks(emptyBookmarks, self.window)
 
 	def description(self):
 		return "Remove **all** Bookmarks. Be careful!"
@@ -39,12 +41,15 @@ class RemoveBookmarkCommand(sublime_plugin.WindowCommand, common.BaseBookmarkCom
 	def description(self):
 		return "Remove an added Bookmark"
 
+
+
 class RemoveBookmarkHandler(threading.Thread):
 	def __init__(self, window):
-		self.window = window
-		self.bookmarks = common.get_bookmarks()
-
 		self.originalFile = common.Bookmark(window, "originalFile", visible=False)
+
+		self.window = window
+		self.bookmarks = common.get_bookmarks(self.window)
+
 
 		threading.Thread.__init__(self)  
 
@@ -57,23 +62,25 @@ class RemoveBookmarkHandler(threading.Thread):
 
 
 	def _done(self, index):
-		#first go back to the original file (from where removeBookmars was called from...)
-		self.originalFile.goto(self.window, True)
 
-		if index < 0:			
+		if index == -1:			
 			common.g_log("Canceled remove Bookmark")
+			self.originalFile.goto(self.window, True)
 		else:
 			
+			#first go back to the original file (from where removeBookmars was called from...)
+			self.originalFile.goto(self.window, True)
+
 			#delete the bookmark in my personal index
-			self.bookmarks[index].remove()
+			self.bookmarks[index].remove(self.window)
 			del self.bookmarks[index]
 
 			#update the global bookmarks list
-			common.set_bookmarks(self.bookmarks)
-
+			common.set_bookmarks(self.bookmarks, self.window)
+			
 			common.g_log("Removed Bookmark")
 
-
+		
 	def _highlighted(self, index):
 		self._goto_bookmark(index)
 
