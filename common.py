@@ -65,6 +65,7 @@ class Bookmark:
 		self.visible = visible
 
 		view = window.active_view()
+		self.view = view
 
 		#set up the unique ID part first :)
 		global g_BOOKMARK_COUNT
@@ -91,12 +92,18 @@ class Bookmark:
 
 
 	def _getMyView(self, window):
+		if self.view is not None and self.view.file_name() == self.filePath:
+			return self.view
+			
 		prevView = window.active_view()
 
 		if prevView.file_name() == self.get_file_path():
+			self.view = prevView
 			return prevView
 
 		myView = window.open_file(self.filePath, sublime.TRANSIENT)
+		self.view = myView
+
 		window.focus_view(prevView)
 
 		return myView
@@ -110,12 +117,14 @@ class Bookmark:
 		#the region has been destroyed. recreate region and re-mark
 		if not regions:
 			g_log("*******unable to get my region!******")
+
+			#inflate re-creates self.region
 			self.inflate(window)
 			self.mark_gutter(window)
 
 			#recursion!
-			self.goto(window, useColumnInfo)
-			return
+			view.show_at_center(self.region)
+
 		else:
 			view.show_at_center(regions[0])
 
@@ -148,13 +157,14 @@ class Bookmark:
 
 
 	def print_dbg(self):
-		g_log ("Bookmark: " + self.name + "| Project: " + self.projectPath)
+		g_log ("Bookmark: " + self.name + "row: " + str(self.row) + " | col: " + str(self.col) + "| Project: " + self.projectPath)
 
 	#Pickling Code (Copy pasted)---------------------------
 	def update_row_column(self, window):
+
 		#get my own point and update my row and column
 		(self.row, self.col) = self._getMyView(window).rowcol(self.pt)
-
+		g_log("updated row, column. row: " + str(self.row) + " | col: " + str(self.col))
 	def __getstate__(self):
 
 		# Copy the object's state from self.__dict__ which contains
@@ -228,14 +238,8 @@ def _write_bookmarks_to_disk(window):
 		_read_bookmarks_from_disk(window)
 		return
 
-	
-	for bookmark in g_BOOKMARK_LIST:
-		bookmark.update_row_column(window)
-
 	g_SAVE_PATH = get_save_path()
 	
-
-
 	with fileLock.FileLock(g_SAVE_PATH):
 
 		try:

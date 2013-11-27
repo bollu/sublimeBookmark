@@ -8,36 +8,17 @@ class gutterMarker(sublime_plugin.EventListener):
 		global g_ACTIVE
 		g_ACTIVE = False
 
-		def on_activated_async(self, view):
-			common.init(sublime.active_window())
-
-		def on_modified_async(self, view):
-			for bookmark in common.get_bookmarks(window, True):
-				bookmark.update_row_column()
-			
-# 	def on_activated_async(self, view):
-# 		global g_ACTIVE
-
-# 		#calling mark_gutter causes on_activaed_async to be called recursively
-# 		#prevent that.
-# 		if(g_ACTIVE):
-# 			return
-
-# 		g_ACTIVE = True
-
-# 		window = sublime.active_window()
-
-# 		#only mark those bookmarks which can
-# 		#for bookmark in common.get_bookmarks(window, True):
-# 		#	pass
-# #			bookmark.mark_gutter(window)
-
-# 		g_ACTIVE = False
-
 	
 
-	def on_pre_close(self, view):
-		common._write_bookmarks_to_disk(sublime.active_window())
+	def on_modified_async(self, view):
+		window = sublime.active_window()
+
+		for bookmark in common.get_bookmarks(window, True):
+			bookmark.update_row_column(window)
+	
+		common._write_bookmarks_to_disk(window)
+
+
 
 class BookmarkLoader(sublime_plugin.WindowCommand):
 	def run(self, window):
