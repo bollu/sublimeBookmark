@@ -11,6 +11,9 @@ class gutterMarker(sublime_plugin.EventListener):
 		def on_activated_async(self, view):
 			common.init(sublime.active_window())
 
+		def on_modified_async(self, view):
+			for bookmark in common.get_bookmarks(window, True):
+				bookmark.update_row_column()
 			
 # 	def on_activated_async(self, view):
 # 		global g_ACTIVE

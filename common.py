@@ -5,7 +5,7 @@ from os.path import dirname, isfile
 from . import fileLock
 import sys
 
-g_VERSION = "1.0.3"
+g_VERSION = "1.0.2"
 
 #Holy crap Turing is rolling in his grave right now
 #This is a monstrosity. Have to rewrite as an FSM or something.
@@ -128,9 +128,9 @@ class Bookmark:
 		
 		if(self.visible and _should_display_bookmark(window, self)):
 			#overwrite the current region
-			myView.add_regions(self.regionTag, [self.region], "text.plain", "bookmark", sublime.PERSISTENT | sublime.DRAW_NO_FILL)
+			myView.add_regions(self.regionTag, [self.region], "text.plain", "bookmark", sublime.DRAW_NO_FILL)
 		else:
-			myView.add_regions(self.regionTag, [self.region], "text.plain",  "", sublime.PERSISTENT | sublime.HIDDEN)
+			myView.add_regions(self.regionTag, [self.region], "text.plain",  "", sublime.HIDDEN)
 
 	def get_line(self):
 		return self.line
@@ -151,7 +151,7 @@ class Bookmark:
 		g_log ("Bookmark: " + self.name + "| Project: " + self.projectPath)
 
 	#Pickling Code (Copy pasted)---------------------------
-	def deflate(self, window):
+	def update_row_column(self, window):
 		#get my own point and update my row and column
 		(self.row, self.col) = self._getMyView(window).rowcol(self.pt)
 
@@ -230,7 +230,7 @@ def _write_bookmarks_to_disk(window):
 
 	
 	for bookmark in g_BOOKMARK_LIST:
-		bookmark.deflate(window)
+		bookmark.update_row_column(window)
 
 	g_SAVE_PATH = get_save_path()
 	
@@ -276,7 +276,7 @@ def _read_bookmarks_from_disk(window):
 			g_BOOKMARK_COUNT = load(pickleFile)
 
 			if pickleVersion != g_VERSION:
-				g_log("Older pickle Present:" + g_SAVE_PATH)
+				g_log("Older pickle Present:" + g_SAVE_PATH + ".Loading Defaults")
 				_load_defaults()
 
 			
@@ -371,6 +371,9 @@ def create_bookmarks_panel_items(window, bookmarks):
 
 
 def _should_display_bookmark(window, bookmark):
+	#HACK!!!
+	return True
+
 	currentProject = _get_current_project_path(window)
 	bookmarkProject = bookmark.get_project_path()
 
