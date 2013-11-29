@@ -22,6 +22,7 @@ Features
 * Bookmarks are saved across sessions
 * Goto any bookmark in the project
 * Add any number of bookmarks (not just 12).
+* Project based bookmarks (bookmarks are stored per-project and bookmarks can be navigated on a per-project basis)
 
 To Install
 ==========
@@ -38,8 +39,7 @@ Once you install Package Control, restart Sublime Text and bring up the Command 
 
 **With Git:** Clone the repository in your Sublime Text Packages directory, located somewhere in user's "Home" directory::
 
-    git clone -b st3 https://github.com/bollu/sublimeBookmark.git
-
+	git clone -b st3 https://github.com/bollu/sublimeBookmark.git
 
 To Use
 ======
@@ -64,7 +64,8 @@ Notes / Addendum
 ###Some TODO Stuff:###
 
 * Port to Sublime Text 2
-* Add an option to only show bookmarks belonging to current project
+* <del>Add an option to only show bookmarks belonging to current project </del>   (Nope, it now fully supports project-based bookmark management!)
+
 
 ###To Help###
 
