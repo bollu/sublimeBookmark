@@ -4,13 +4,17 @@ import threading
 from . import common
 
 
-class GotoBookmarkCommand(sublime_plugin.WindowCommand, common.BaseBookmarkCommand):
-	def __init__(self, window):
+class GotoBookmarkCommand(sublime_plugin.ApplicationCommand, common.BaseBookmarkCommand):
+	def __init__(self):
+		self.window = sublime.active_window()
 		self.thread = None
-		common.BaseBookmarkCommand.__init__(self, window)
+		common.BaseBookmarkCommand.__init__(self, self.window)
 
 
 	def run(self):
+		self.window = sublime.active_window()
+
+		
 		if self.thread is not None:
 			self.thread.join()
 
@@ -38,6 +42,7 @@ class GotoBookmarkHandler(threading.Thread):
 
 
 	def run(self):
+		self.window = sublime.active_window()
 		view = self.window.active_view()
 
 		bookmarkItems = common.create_bookmarks_panel_items(self.window, self.bookmarks)

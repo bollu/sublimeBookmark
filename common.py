@@ -36,7 +36,7 @@ g_SETTINGS = {
 def g_log(str):
 	if(True):
 		#dear lord, I'm a monster
-		print ("\nSublimeBookmarks log: " + str + "\n")
+		print ("SublimeBookmarks: " + str)
  
 #Initialization------------------------------------------
 def init(window):
@@ -84,7 +84,7 @@ class Bookmark:
 		self.b = self.region.b
 
 		#mark gutter
-		self.mark_gutter(window)
+		#self.mark_gutter(window)
 
 
 	def _getMyView(self, window):
@@ -107,7 +107,7 @@ class Bookmark:
 
 		window.focus_view(prevView)
 
-		return myView
+		return self.view
 
 	def goto(self, window, useColumnInfo):
 		view = window.open_file(self.filePath)
@@ -120,8 +120,9 @@ class Bookmark:
 			g_log("*******unable to get my region!******")
 
 			#inflate re-creates self.region
-			self.inflate(window)
-			self.mark_gutter(window)
+			myView = self._getMyView(window)
+			self.region = sublime.Region(self.a, self.b)
+			#self.mark_gutter(window)
 
 			#recursion!
 			view.show_at_center(self.region)
@@ -136,11 +137,11 @@ class Bookmark:
 	def mark_gutter(self, window):
 		myView = self._getMyView(window)
 		
-		if(self.visible and _should_display_bookmark(window, self)):
+		if self.visible and _should_display_bookmark(window, self):
 			#overwrite the current region
-			myView.add_regions(self.regionTag, [self.region], "text.plain", "bookmark", sublime.PERSISTENT | sublime.DRAW_NO_FILL)
+			myView.add_regions(self.regionTag, [self.region], "text.plain", "bookmark", sublime.DRAW_NO_FILL)
 		else:
-			myView.add_regions(self.regionTag, [self.region], "text.plain",  "", sublime.PERSISTENT | sublime.HIDDEN)
+			myView.add_regions(self.regionTag, [self.region], "text.plain",  "", sublime.HIDDEN)
 
 	def get_line(self, window):
 		myView = self._getMyView(window)
@@ -173,18 +174,6 @@ class Bookmark:
 		#get my own point and update my row and column
 		self.a = self.region.a
 		self.b = self.region.b
-		
-	def __getstate__(self):
-
-		# Copy the object's state from self.__dict__ which contains
-		# all our instance attributes. Always use the dict.copy()
-		# method to avoid modifying the original state.
-		state = self.__dict__.copy()
-		return state
-
-	def __setstate__(self, state):
-		# Restore instance attributes (i.e., filename and lineno).
-		self.__dict__.update(state)
 
 	def inflate(self, window):
 		myView = self._getMyView(window)
@@ -207,15 +196,22 @@ class BaseBookmarkCommand:
 
 #save / load code----------------------------------------
 def get_bookmarks(window, shouldFilter=True):
+	
+	if g_BOOKMARK_LIST is None:
+		_read_bookmarks_from_disk(window)
 
-	_read_bookmarks_from_disk(window)
-
+	filteredBookmarkList = None
 	if shouldFilter:
 		#return the list of *permissible* bookmarks. 
-		return _create_bookmarks_list(window, g_BOOKMARK_LIST)
+		filteredBookmarkList =  _create_bookmarks_list(window, g_BOOKMARK_LIST)
 	else:
-		return g_BOOKMARK_LIST
+		filteredBookmarkList = g_BOOKMARK_LIST
 
+
+	for bookmark in filteredBookmarkList:
+		bookmark.mark_gutter(window)
+
+	return filteredBookmarkList
 
 def set_bookmarks(bookmarks, window):
 	g_log("set global bookmarks")
@@ -225,7 +221,10 @@ def set_bookmarks(bookmarks, window):
 	assert bookmarks != None, "trying to write  *None* bookmarks."
 
 	g_BOOKMARK_LIST = bookmarks
-	_write_bookmarks_to_disk(window)
+
+	for bookamrk in g_BOOKMARK_LIST:
+		bookmark.mark_gutter(window)
+	#_write_bookmarks_to_disk(window)
 
 	
 
@@ -241,7 +240,9 @@ def _write_bookmarks_to_disk(window):
 	# been loaded for the first time)
 	#both are solved by calling _read_bookmarks_from_disk()
 	if g_BOOKMARK_LIST == None:
-		g_log("trying to write *None* bookmarks to disk")
+		g_log("**************************************************")
+		g_log("trying to write *None* bookmarks to disk. Reloading bookmarks")
+		g_log("**************************************************")
 		_read_bookmarks_from_disk(window)
 		return
 
@@ -265,8 +266,6 @@ def _read_bookmarks_from_disk(window):
 	global g_BOOKMARK_LIST
 	global g_SAVE_PATH
 	global g_BOOKMARK_COUNT
-
-	g_log("reading bookmarks from disk")
 
 	g_SAVE_PATH = get_save_path()
 
@@ -295,9 +294,6 @@ def _read_bookmarks_from_disk(window):
 				g_log("Unable to load pickle correctly:" + g_SAVE_PATH)
 				_load_defaults()
 
-
-			
-
 		except  Exception:
 			g_log('Error when opening pickle')
 			_load_defaults()
@@ -321,6 +317,7 @@ def save_settings(window):
 	pass
 
 def load_settings():
+	g_log("**loading bookmarks**")
 	global g_SETTINGS
 
 	g_log("loading settings")
@@ -329,6 +326,10 @@ def load_settings():
 	#not a fan of hardcoding this
 	g_SETTINGS["show_free"]  = settings.get("always_show_free_bookmarks", False)
 	g_SETTINGS["show_project"] = settings.get("always_show_project_bookmarks", True)
+
+
+	#settings.add_on_change('always_show_free_bookmarks', load_settings)
+	#settings.add_on_change('always_show_project_bookmarks', load_settings)
 
 
 #panel creation code----------------------------
@@ -383,51 +384,46 @@ def create_bookmarks_panel_items(window, bookmarks):
 
 def _should_display_bookmark(window, bookmark):
 	#HACK!!!
-	return True
+	#return True
 	#----------------------------------------------------------
 	
 	currentProject = _get_current_project_path(window)
 	bookmarkProject = bookmark.get_project_path()
 
 	#if the bookmark has a project and *that project is open*,
-		#show it.
-
+	#show it.
+	# 	(or)
 	#if the bookmark was free and the editor *is now free*,
 	#show it
 	if currentProject == bookmarkProject:
 		return True
 
-	#if you should always free bookmarks and this bookmark
-	#is free, add it
+	# #if you should always free bookmarks and this bookmark
+	# #is free, add it
 	elif g_SETTINGS["show_free"] == True and bookmarkProject == "":
 		return True
 
-	#if you should always show project related bookmarks and this bookmark
-	#has a project, add it
+	# #if you should always show project related bookmarks and this bookmark
+	# #has a project, add it
 	elif g_SETTINGS["show_project"] == True and bookmarkProject != "":
 		return True
 
-	else:
-		return False
+	#it reached here => bookmark and project don't match
+	g_log("Failed " + bookmark.get_name() + " | " + _ellipsis_string_begin(bookmark.get_project_path(), 55))
+	return False
 
 
 def _create_bookmarks_list(window, bookmarks):
-	g_log("sorting bookmarks")
-
 	currentProject = _get_current_project_path(window)
-	g_log("current project: " + currentProject)
-
 	bookmarksList = []
 
-	for bookmark in bookmarks:
-
-
+	for bookmark in g_BOOKMARK_LIST:
+		g_log("seeing if |" + bookmark.get_name() + "| is applicable in list")
 		bookmarkProject = bookmark.get_project_path()
 
 		if _should_display_bookmark(window, bookmark):
 			bookmarksList.append(bookmark)
-		else:
-			continue
 
 			
 	return bookmarksList
+

@@ -3,12 +3,14 @@ import threading
 
 from . import common
 
-class RemoveAllBookmarksCommand(sublime_plugin.WindowCommand, common.BaseBookmarkCommand):
-	def __init__(self, window):
-		common.BaseBookmarkCommand.__init__(self, window)
-		self.window = window
+class RemoveAllBookmarksCommand(sublime_plugin.ApplicationCommand, common.BaseBookmarkCommand):
+	def __init__(self):
+		self.window = sublime.active_window()
+		common.BaseBookmarkCommand.__init__(self, self.window)
+		
 
 	def run(self):
+		self.window = sublime.active_window()
 		#disable bookmark filters to access *all* bookmarks
 		for bookmark in common.get_bookmarks(self.window, False):
 			bookmark.remove(self.window)
@@ -19,12 +21,15 @@ class RemoveAllBookmarksCommand(sublime_plugin.WindowCommand, common.BaseBookmar
 	def description(self):
 		return "Remove **all** Bookmarks. Be careful!"
 
-class RemoveBookmarkCommand(sublime_plugin.WindowCommand, common.BaseBookmarkCommand):
-	def __init__(self, window):
+class RemoveBookmarkCommand(sublime_plugin.ApplicationCommand, common.BaseBookmarkCommand):
+	def __init__(self):
+		self.window = sublime.active_window()
 		self.thread = None
-		common.BaseBookmarkCommand.__init__(self, window)
+		common.BaseBookmarkCommand.__init__(self, self.window)
 
 	def run(self):
+		self.window = sublime.active_window()
+
 		if self.thread is not None:
 			self.thread.join()
 
