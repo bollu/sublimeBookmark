@@ -40,11 +40,14 @@ def getCurrentLineRegion(view):
 
 	return region 
 
-def markBuffer(view, uid, region):
+def markBuffer(view, bookmark):
+	uid = bookmark.getUid()
+	region  = bookmark.getRegion()
 	view.add_regions(str(uid), [region], "text.plain", "bookmark", sublime.DRAW_NO_FILL)
 
-def unmarkBuffer(view, uid):
-	view.erase_regions(uid)
+def unmarkBuffer(view, bookmark):
+	uid = bookmark.getUid()
+	view.erase_regions(str(uid))
 
 #Bookmark manipulation------------
 def genUid(count):
@@ -152,6 +155,8 @@ class SublimeBookmarkCommand(sublime_plugin.ApplicationCommand):
 		#bookmark that represents the original file
 		self.revertBookmark = None
 
+		#self._Load()
+
 	def run(self, type):
 		if type == "add":
 			self._addBookmark()
@@ -165,36 +170,72 @@ class SublimeBookmarkCommand(sublime_plugin.ApplicationCommand):
 		elif type == "remove_all":
 			self._removeAllBookmarks()
 
+		elif type == "unmark_buffer":
+			self._unmarkBuffer()
 
-	#event handlers------------
+		elif type == "mark_buffer":
+			self._markBuffer()
+	#event handlers----------------------------
 	def _addBookmark(self):
 		print ("add")
 		input = OptionsInput(sublime.active_window(), "Add Bookmark", "", self._AddBookmarkCallback, None)
 		input.start()
 
 	def _gotoBookmark(self):
-		print ("goto")
 		window = sublime.active_window()
 
 		self.revertBookmark = self._createRevertBookmark(window.active_view())
 		
 		bookmarkItems = createBookmarkPanelItems(window, self.bookmarks)
-		#both onDone and onHighlight do the same thing...
 		selector = OptionsSelector(window, bookmarkItems, self._HilightDoneCallback, self._AutoMoveToBookmarkCallback)
 		selector.start()
 
 
 	def _removeBookmark(self):
-		print ("remove")
-		pass
+		window = sublime.active_window()
+
+		self.revertBookmark = self._createRevertBookmark(window.active_view())
+		
+		bookmarkItems = createBookmarkPanelItems(window, self.bookmarks)
+		selector = OptionsSelector(window, bookmarkItems, self._RemoveDoneCallback, self._AutoMoveToBookmarkCallback)
+		selector.start()
+
 
 	def _removeAllBookmarks(self):
-		print ("remove_all")
-		pass
+		window = sublime.active_window()
+		view = window.active_view()
+		filePath = view.file_name()
 
-	#helpers-------------------------
-	def _hilightBookmarks(self, activeView):
-		pass
+		for bookmark in self.bookmarks:
+			#unmark all bookmarks that are currently visible for immediate feedback
+			if bookmark.getFilePath() == filePath:
+				unmarkBuffer(view, bookmark)
+
+		del self.bookmarks
+		self.bookmarks = []	
+
+	def _unmarkBuffer(self):
+		print("unmarking buffer")
+		window = sublime.active_window()
+		view = window.active_view()
+		filePath = view.file_name()
+		
+		for bookmark in self.bookmarks:
+			if bookmark.getFilePath() == filePath:
+				unmarkBuffer(view, bookmark)
+
+	def _markBuffer(self):
+		print("marking buffer")
+		window = sublime.active_window()
+		view = window.active_view()
+		filePath = view.file_name()
+		
+		for bookmark in self.bookmarks:
+			if bookmark.getFilePath() == filePath:
+				markBuffer(view, bookmark)
+			else:
+				unmarkBuffer(view, bookmark)
+	#helpers-------------------------------------------
 
 	def _createRevertBookmark(self, activeView):
 		name = ""
@@ -207,7 +248,7 @@ class SublimeBookmarkCommand(sublime_plugin.ApplicationCommand):
 
 		return Bookmark(uID, name, filePath, region, lineNumber, lineStr)
 
-	#callbacks-----------------------
+	#callbacks---------------------------------------------------
 	def _AddBookmarkCallback(self, name):
 		view = sublime.active_window().active_view()
 		filePath = view.file_name()
@@ -221,17 +262,17 @@ class SublimeBookmarkCommand(sublime_plugin.ApplicationCommand):
 
 		bookmark = Bookmark(uID, name, filePath, region, lineNumber, lineStr)
 		self.bookmarks.append(bookmark)
-		markBuffer(view, uID, region)
+		markBuffer(view, bookmark)
 		print(serealizeBookmark(deserealizeBookmark(serealizeBookmark(bookmark))))
 
 
 	def _AutoMoveToBookmarkCallback(self, index):
-	
 		assert index < len(self.bookmarks)
 		bookmark = self.bookmarks[index]
 		assert bookmark is not None
 
 		gotoBookmark(bookmark, sublime.active_window())
+		self._markBuffer()
 	
 	def _HilightDoneCallback(self, index):
 		if index == -1:
@@ -239,9 +280,30 @@ class SublimeBookmarkCommand(sublime_plugin.ApplicationCommand):
 			
 			assert self.revertBookmark is not None
 			gotoBookmark(self.revertBookmark, sublime.active_window())
-
-			self._hilightBookmarks(view)
-		
-		
+			
 		self.revertBookmark = None
+		self._markBuffer()
+
+	def _RemoveDoneCallback(self, index):
+		if index == -1:
+			print ("cancelled")
+			
+			assert self.revertBookmark is not None
+			gotoBookmark(self.revertBookmark, sublime.active_window())
+			return
+		else:
+			assert index < len(self.bookmarks)
+
+			#remove the mark from the bookmark
+			window = sublime.active_window()
+			bookmark = self.bookmarks[index]
+			assert bookmark is not None
+
+			gotoBookmark(bookmark, window)
+			unmarkBuffer(window.active_view(), bookmark)
+			
+			del self.bookmarks[index]
+
+		self.revertBookmark = None
+		self._markBuffer()
 
