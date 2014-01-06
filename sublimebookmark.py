@@ -1,8 +1,11 @@
 import sublime
 import sublime_plugin
 import threading 
-
+import os.path
+from itertools import islice
+from pickle import dump, load
 REGION_BASE_TAG = "__SublimeBookmark__"
+
 
 class OptionsSelector(threading.Thread):
 	def __init__(self, window, panelItems, onDone, onHighlight):
@@ -55,26 +58,40 @@ def genUid(count):
 	
 
 def serealizeBookmark(bookmark):
-	regionBegin = str(bookmark.getRegion().a)
-	regionEnd = str(bookmark.getRegion().b)
 	uID = str(bookmark.getUid())
 	name = bookmark.getName()
 	filePath = bookmark.getFilePath()
-	return filePath + "\n" + name + "\n" + regionBegin + "\n" + regionEnd + "\n" + uID + "\n" 
+	regionBegin = str(bookmark.getRegion().a)
+	regionEnd = str(bookmark.getRegion().b)
+	lineNumber = str(bookmark.getLineNumber())
+	lineStr = str(bookmark.getLineStr())
+
+	return  uID + "\n" + name + "\n" + filePath + "\n" + regionBegin + "\n" + regionEnd + "\n" + lineNumber + "\n" + lineStr
+
 
 def deserealizeBookmark(string):
 	lines = string.splitlines()
 
-	filePath = str(lines[0])
+	uID = int(lines[0].strip())
 	name = str(lines[1].strip())
-	regionBegin = int(lines[2].strip())
-	regionEnd =  int(lines[3].strip())
-	uID = int(lines[4].strip())
+	filePath = str(lines[2])
 	
+	regionBegin = int(lines[3].strip())
+	regionEnd =  int(lines[4].strip())
+	lineNumber = int(lines[5].strip())
+	lineStr = str(lines[6].strip())
 
 	region = sublime.Region(regionBegin, regionEnd)
 
-	return Bookmark(uID, name, filePath, region)
+	return Bookmark(uID, name, filePath, region, lineNumber, lineStr)
+
+def readBookmarkString(file):
+	lines = []
+
+	for x in range(0, 7):
+		lines.append(file.readline())
+
+	return lines
 
 def gotoBookmark(bookmark, window):
 	filePath = bookmark.getFilePath()
@@ -135,27 +152,33 @@ class Bookmark:
 	def getFilePath(self):
 		return self.filePath
 
-	def getLineStr(self):
-		return self.lineStr
-
 	def getLineNumber(self):
 		return self.lineNumber
 
-	def setLine(self, lineStr, lineNumber):
-		self.lineStr = lineStrs
-		self.lineNumber = lineNumber
+	def getLineStr(self):
+		return self.lineStr
 
+	
 
+	def setLineStr(self, newLineStr):
+		self.lineStr = newLineStr
+
+	def setRegion(self, region):
+		self.region = region
 
 class SublimeBookmarkCommand(sublime_plugin.ApplicationCommand):
 	def __init__(self):
 		self.bookmarks = []
 		self.thread = None
 		self.uid = 0
-		#bookmark that represents the original file
+		#bookmark that represents the file from which the panel was activated
 		self.revertBookmark = None
 
-		#self._Load()
+		#File IO here!
+		currentDir = os.path.dirname(os.path.realpath(__file__))
+		print(currentDir)
+		self.SAVE_PATH = currentDir + '/sublimeBookmarks.pickle'
+		self._Load()
 
 	def run(self, type):
 		if type == "add":
@@ -175,6 +198,13 @@ class SublimeBookmarkCommand(sublime_plugin.ApplicationCommand):
 
 		elif type == "mark_buffer":
 			self._markBuffer()
+
+		elif type == "save_data":
+			self._Save();
+
+		elif type == "move_bookmarks":
+			self._MoveBookmarks();
+
 	#event handlers----------------------------
 	def _addBookmark(self):
 		print ("add")
@@ -235,6 +265,26 @@ class SublimeBookmarkCommand(sublime_plugin.ApplicationCommand):
 				markBuffer(view, bookmark)
 			else:
 				unmarkBuffer(view, bookmark)
+
+	def _MoveBookmarks(self):
+		print("marking buffer")
+		window = sublime.active_window()
+		view = window.active_view()
+		filePath = view.file_name()
+		
+		for bookmark in self.bookmarks:
+			if bookmark.getFilePath() == filePath:
+				uid = bookmark.getUid()
+				#load the new region and set the bookmark's region again
+				newRegion = view.get_regions(str(uid))[0]
+				newLineStr = view.substr(newRegion) 
+
+				assert newRegion is not None
+				bookmark.setRegion(newRegion)
+				bookmark.setLineStr(newLineStr)
+				#re-mark the buffer
+				markBuffer(view, bookmark)
+					
 	#helpers-------------------------------------------
 
 	def _createRevertBookmark(self, activeView):
@@ -264,7 +314,9 @@ class SublimeBookmarkCommand(sublime_plugin.ApplicationCommand):
 		self.bookmarks.append(bookmark)
 		markBuffer(view, bookmark)
 		print(serealizeBookmark(deserealizeBookmark(serealizeBookmark(bookmark))))
-
+		
+		#File IO Here!
+		self._Save()
 
 	def _AutoMoveToBookmarkCallback(self, index):
 		assert index < len(self.bookmarks)
@@ -307,3 +359,35 @@ class SublimeBookmarkCommand(sublime_plugin.ApplicationCommand):
 		self.revertBookmark = None
 		self._markBuffer()
 
+		#File IO Here!
+		self._Save()
+
+
+	#Save-Load----------------------------------------------------------------
+	def _Load(self):
+		print("loading")
+
+		try:
+			savefile = open(self.SAVE_PATH, "rb")
+
+			self.uid = load(savefile)
+			self.bookmarks = load(savefile)
+			
+		
+		except (OSError, IOError) as e:
+			print (e)
+		
+		#now mark the buffer
+		#self._markBuffer()
+
+
+	def _Save(self):
+		print ("saving")
+
+		try:
+			savefile = open(self.SAVE_PATH, "wb")
+			dump(self.uid, savefile)
+			dump(self.bookmarks, savefile)
+
+		except (OSError, IOError) as e:
+			print (e)

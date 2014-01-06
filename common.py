@@ -34,7 +34,7 @@ g_SETTINGS = {
 
 
 def g_log(str):
-	if(True):
+	if(False):
 		#dear lord, I'm a monster
 		print ("SublimeBookmarks: " + str)
  
