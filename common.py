@@ -354,32 +354,12 @@ def create_bookmarks_panel_items(window, bookmarks):
 		for bookmark in bookmarks:
 
 			bookmarkName = bookmark.get_name()
-			bookmarkLine = _ellipsis_string_end(bookmark.get_line(window), 55)
-			bookmarkFile = _ellipsis_string_begin(bookmark.get_file_path(), 55)
+			bookmarkLine = _ellipsis_string_end(bookmark.getLine(window), 55)
+			bookmarkFile = _ellipsis_string_begin(bookmark.getFilePath(), 55)
 
 			bookmarkItems.append( [bookmarkName, bookmarkLine, bookmarkFile] )
 
 		return bookmarkItems
-
-		# bookmarkItems = []
-		# g_log("currentProject: " + currentProject)
-
-		# for bookmark in bookmarks:
-		# 	bookmarkProject = bookmark.get_project_path()
-		
-		# 	bookmark.print_dbg()
-
-		# 	#this is not yet perfect. will have to revise this
-		# 	if True or (currentProject == "") or (currentProject.lower() == bookmarkProject.lower()):
-				
-		# 		bookmarkName = bookmark.get_name()
-				
-		# 		bookmarkLine = _ellipsis_string_end(bookmark.get_line(), 55)
-		# 		bookmarkFile = _ellipsis_string_begin(bookmark.get_file_path(), 55)
-
-		# 		bookmarkItems.append( [bookmarkName, bookmarkLine, bookmarkFile] )
-				
-		# return bookmarkItems
 
 
 def _should_display_bookmark(window, bookmark):

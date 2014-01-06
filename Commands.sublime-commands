@@ -2,21 +2,26 @@
     //Add a bookmark
     {
         "caption": "Bookmarks: Add Bookmark",
-        "command": "add_bookmark"
+        "command": "sublime_bookmark",
+        "args" : { "type" : "add" }
+
     },
 
     //Goto a specific bookmark
 	{
         "caption": "Bookmarks: Goto Bookmark",
-        "command": "goto_bookmark"
+        "command": "sublime_bookmark",
+        "args" : { "type" : "goto" }
     },
     //Remove a single bookmark
     {
         "caption": "Bookmarks: Remove A Bookmark",
-        "command": "remove_bookmark",
+        "command": "sublime_bookmark",
+        "args" : { "type" : "remove" }
     },
     {
         "caption": "Bookmarks: Remove All Bookmarks (Clear Bookmarks)",
-        "command": "remove_all_bookmarks",
+        "command": "sublime_bookmark",
+        "args" : { "type" : "remove_all" }
     },
 ]
