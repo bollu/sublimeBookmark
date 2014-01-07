@@ -244,7 +244,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		region = getCurrentLineRegion(view)
 
 		#copy whatever is on the line for the bookmark name
-		initialText = view.substr(region)
+		initialText = view.substr(region).strip()
 
 		input = OptionsInput(self.window, "Add Bookmark", initialText, self._AddBookmarkCallback, None)
 		input.start()
