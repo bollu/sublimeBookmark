@@ -12,7 +12,7 @@
 	true: bookmarks which belong to other projects will always be shown
 	false:  bookmarks which belong to other projects will be shown only when that
 			project is open */
-	"always_show_project_bookmarks": false,
+	"always_show_project_bookmarks": true,
 
 	
 }

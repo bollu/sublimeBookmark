@@ -4,8 +4,13 @@ import threading
 import os.path
 from itertools import islice
 from pickle import dump, load
-REGION_BASE_TAG = "__SublimeBookmark__"
 
+REGION_BASE_TAG = "__SublimeBookmark__"
+SETTINGS_NAME = "SublimeBookmarks.sublime-settings"
+#if someone names their project this, we're boned
+NO_PROJECT = "___NO_PROJECT_PRESENT____"
+
+BOOKMARKS = []
 
 class OptionsSelector(threading.Thread):
 	def __init__(self, window, panelItems, onDone, onHighlight):
@@ -57,42 +62,6 @@ def genUid(count):
 	return REGION_BASE_TAG + str(count)
 	
 
-def serealizeBookmark(bookmark):
-	uID = str(bookmark.getUid())
-	name = bookmark.getName()
-	filePath = bookmark.getFilePath()
-	regionBegin = str(bookmark.getRegion().a)
-	regionEnd = str(bookmark.getRegion().b)
-	lineNumber = str(bookmark.getLineNumber())
-	lineStr = str(bookmark.getLineStr())
-
-	return  uID + "\n" + name + "\n" + filePath + "\n" + regionBegin + "\n" + regionEnd + "\n" + lineNumber + "\n" + lineStr
-
-
-def deserealizeBookmark(string):
-	lines = string.splitlines()
-
-	uID = int(lines[0].strip())
-	name = str(lines[1].strip())
-	filePath = str(lines[2])
-	
-	regionBegin = int(lines[3].strip())
-	regionEnd =  int(lines[4].strip())
-	lineNumber = int(lines[5].strip())
-	lineStr = str(lines[6].strip())
-
-	region = sublime.Region(regionBegin, regionEnd)
-
-	return Bookmark(uID, name, filePath, region, lineNumber, lineStr)
-
-def readBookmarkString(file):
-	lines = []
-
-	for x in range(0, 7):
-		lines.append(file.readline())
-
-	return lines
-
 def gotoBookmark(bookmark, window):
 	filePath = bookmark.getFilePath()
 	lineNumber = bookmark.getLineNumber()
@@ -100,6 +69,12 @@ def gotoBookmark(bookmark, window):
 	view = window.open_file(filePath, sublime.TRANSIENT)
 	view.show_at_center(bookmark.getRegion())
 
+
+def shouldShowBookmark(bookmark, window, showFreeBookmarks, showProjectBookmarks):
+	currentProjectPath = window.project_file_name()
+
+	return (showFreeBookmarks and bookmark.getProjectPath() == NO_PROJECT) or \
+		   (showProjectBookmarks and bookmark.getProjectPath() == currentProjectPath)
 #Menu generation---------
 def ellipsisStringEnd(string, length):
 	#I have NO idea why the hell this would happen. But it's happening.
@@ -115,16 +90,19 @@ def ellipsisStringBegin(string, length):
 	else:	
 		return string if len(string) <= length else '...' + string[ len(string) + 3 - (length)  : len(string) ] 
 
-def createBookmarkPanelItems(window, bookmarks):	
+def createBookmarkPanelItems(window, bookmarks, showFreeBookmarks, showProjectBookmarks):	
 	bookmarkItems = []
-
+	
 	for bookmark in bookmarks:
+		if shouldShowBookmark(bookmark, window, showFreeBookmarks, showProjectBookmarks):
 
-		bookmarkName = bookmark.getName()
-		bookmarkLine = ellipsisStringEnd(bookmark.getLineStr(), 55)
-		bookmarkFile = ellipsisStringBegin(bookmark.getFilePath(), 55)
+			bookmarkName = bookmark.getName()
+			bookmarkLine = ellipsisStringEnd(bookmark.getLineStr(), 55)
+			bookmarkFile = ellipsisStringBegin(bookmark.getFilePath(), 55)
 
-		bookmarkItems.append( [bookmarkName, bookmarkLine, bookmarkFile] )
+			bookmarkItems.append( [bookmarkName, bookmarkLine, bookmarkFile] )
+		else:
+			continue
 
 	return bookmarkItems
 
@@ -132,11 +110,12 @@ def createBookmarkPanelItems(window, bookmarks):
 
 #Bookmark-----------
 class Bookmark:
-	def __init__(self, uid, name, filePath, region, lineNumber, lineStr):
+	def __init__(self, uid, name, filePath, projectPath, region, lineNumber, lineStr):
 		self.uid = int(uid)
 		self.name = str(name)
 		self.region = region
 		self.filePath = str(filePath)
+		self.projectPath = str(projectPath)
 		self.lineStr = str(lineStr)
 		self.lineNumber = int(lineNumber)
 
@@ -152,6 +131,9 @@ class Bookmark:
 	def getFilePath(self):
 		return self.filePath
 
+	def getProjectPath(self):
+		return self.projectPath
+
 	def getLineNumber(self):
 		return self.lineNumber
 
@@ -166,21 +148,37 @@ class Bookmark:
 	def setRegion(self, region):
 		self.region = region
 
-class SublimeBookmarkCommand(sublime_plugin.ApplicationCommand):
-	def __init__(self):
+class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
+	def __init__(self, window):
+		global BOOKMARKS
+		
+		self.window = window
 		self.bookmarks = []
 		self.thread = None
 		self.uid = 0
 		#bookmark that represents the file from which the panel was activated
 		self.revertBookmark = None
 
+		#whether free bookmarks should must be shown
+		self.showFreeBookmarks = True
+		#whether bookmarks attached to projects should be shown
+		self.showProjectBookmarks = True
+
 		#File IO here!
 		currentDir = os.path.dirname(os.path.realpath(__file__))
-		print(currentDir)
 		self.SAVE_PATH = currentDir + '/sublimeBookmarks.pickle'
+		print(currentDir)
+
 		self._Load()
+		
+
 
 	def run(self, type):
+		settings = sublime.load_settings(SETTINGS_NAME)
+		assert settings is not None
+		settings.add_on_change("always_show_free_bookmarks", self._LoadSettings())
+		settings.add_on_change("always_show_project_bookmarks", self._LoadSettings())
+
 		if type == "add":
 			self._addBookmark()
 
@@ -194,7 +192,8 @@ class SublimeBookmarkCommand(sublime_plugin.ApplicationCommand):
 			self._removeAllBookmarks()
 
 		elif type == "unmark_buffer":
-			self._unmarkBuffer()
+			pass
+			#self._unmarkBuffer()
 
 		elif type == "mark_buffer":
 			self._markBuffer()
@@ -208,34 +207,52 @@ class SublimeBookmarkCommand(sublime_plugin.ApplicationCommand):
 	#event handlers----------------------------
 	def _addBookmark(self):
 		print ("add")
-		input = OptionsInput(sublime.active_window(), "Add Bookmark", "", self._AddBookmarkCallback, None)
+		input = OptionsInput(self.window, "Add Bookmark", "", self._AddBookmarkCallback, None)
 		input.start()
 
 	def _gotoBookmark(self):
-		window = sublime.active_window()
+		#File IO Here!--------------------
+		self._Load()
+
+		window = self.window
 
 		self.revertBookmark = self._createRevertBookmark(window.active_view())
-		
-		bookmarkItems = createBookmarkPanelItems(window, self.bookmarks)
+
+		bookmarkItems = createBookmarkPanelItems(window, self.bookmarks, 
+			self.showFreeBookmarks, self.showProjectBookmarks)
+
+		if len(bookmarkItems) == 0:
+			return
+
 		selector = OptionsSelector(window, bookmarkItems, self._HilightDoneCallback, self._AutoMoveToBookmarkCallback)
 		selector.start()
 
 
 	def _removeBookmark(self):
-		window = sublime.active_window()
+		#File IO Here!--------------------
+		self._Load()
+
+		window = self.window
 
 		self.revertBookmark = self._createRevertBookmark(window.active_view())
 		
-		bookmarkItems = createBookmarkPanelItems(window, self.bookmarks)
+		bookmarkItems = createBookmarkPanelItems(window, self.bookmarks, 
+			self.showFreeBookmarks, self.showProjectBookmarks)
+
+		if len(bookmarkItems) == 0:
+			return
+
 		selector = OptionsSelector(window, bookmarkItems, self._RemoveDoneCallback, self._AutoMoveToBookmarkCallback)
 		selector.start()
 
 
 	def _removeAllBookmarks(self):
-		window = sublime.active_window()
+		window = self.window
 		view = window.active_view()
 		filePath = view.file_name()
 
+		global BOOKMARKS
+		
 		for bookmark in self.bookmarks:
 			#unmark all bookmarks that are currently visible for immediate feedback
 			if bookmark.getFilePath() == filePath:
@@ -245,8 +262,7 @@ class SublimeBookmarkCommand(sublime_plugin.ApplicationCommand):
 		self.bookmarks = []	
 
 	def _unmarkBuffer(self):
-		print("unmarking buffer")
-		window = sublime.active_window()
+		window = self.window
 		view = window.active_view()
 		filePath = view.file_name()
 		
@@ -255,27 +271,36 @@ class SublimeBookmarkCommand(sublime_plugin.ApplicationCommand):
 				unmarkBuffer(view, bookmark)
 
 	def _markBuffer(self):
-		print("marking buffer")
-		window = sublime.active_window()
+		window = self.window
 		view = window.active_view()
 		filePath = view.file_name()
 		
+
 		for bookmark in self.bookmarks:
-			if bookmark.getFilePath() == filePath:
+			shouldShow = shouldShowBookmark(bookmark, window, self.showFreeBookmarks, self.showProjectBookmarks)
+
+			if bookmark.getFilePath() == filePath and shouldShow:
 				markBuffer(view, bookmark)
 			else:
 				unmarkBuffer(view, bookmark)
 
 	def _MoveBookmarks(self):
-		print("marking buffer")
-		window = sublime.active_window()
+		window = self.window
 		view = window.active_view()
 		filePath = view.file_name()
 		
+		global BOOKMARKS
+
 		for bookmark in self.bookmarks:
 			if bookmark.getFilePath() == filePath:
 				uid = bookmark.getUid()
 				#load the new region and set the bookmark's region again
+				regions = view.get_regions(str(uid))
+
+				#there is no region in the view
+				if len(regions) == 0:
+					return
+
 				newRegion = view.get_regions(str(uid))[0]
 				newLineStr = view.substr(newRegion) 
 
@@ -290,18 +315,26 @@ class SublimeBookmarkCommand(sublime_plugin.ApplicationCommand):
 	def _createRevertBookmark(self, activeView):
 		name = ""
 		filePath = activeView.file_name()
+		projectPath = ""
 		uID = -1
 
 		region = getCurrentLineRegion(activeView)
 		lineStr = ""
 		lineNumber = activeView.rowcol(activeView.sel()[0].begin())[0]
 
-		return Bookmark(uID, name, filePath, region, lineNumber, lineStr)
+		return Bookmark(uID, name, filePath, projectPath, region, lineNumber, lineStr)
 
 	#callbacks---------------------------------------------------
 	def _AddBookmarkCallback(self, name):
-		view = sublime.active_window().active_view()
+		window = self.window
+		view = window.active_view()
+
 		filePath = view.file_name()
+
+		projectPath = window.project_file_name()
+		if projectPath is None:
+			projectPath = NO_PROJECT
+
 		uID = self.uid
 		self.uid = self.uid + 1
 
@@ -309,13 +342,14 @@ class SublimeBookmarkCommand(sublime_plugin.ApplicationCommand):
 		lineStr = view.substr(region)
 		lineNumber = view.rowcol(view.sel()[0].begin())[0]
 
+		global BOOKMARKS
 
-		bookmark = Bookmark(uID, name, filePath, region, lineNumber, lineStr)
+		bookmark = Bookmark(uID, name, filePath, projectPath, region, lineNumber, lineStr)
 		self.bookmarks.append(bookmark)
+
 		markBuffer(view, bookmark)
-		print(serealizeBookmark(deserealizeBookmark(serealizeBookmark(bookmark))))
 		
-		#File IO Here!
+		#File IO Here!--------------------
 		self._Save()
 
 	def _AutoMoveToBookmarkCallback(self, index):
@@ -323,31 +357,30 @@ class SublimeBookmarkCommand(sublime_plugin.ApplicationCommand):
 		bookmark = self.bookmarks[index]
 		assert bookmark is not None
 
-		gotoBookmark(bookmark, sublime.active_window())
+		gotoBookmark(bookmark, self.window)
 		self._markBuffer()
 	
 	def _HilightDoneCallback(self, index):
 		if index == -1:
-			print ("cancelled")
-			
 			assert self.revertBookmark is not None
-			gotoBookmark(self.revertBookmark, sublime.active_window())
+			gotoBookmark(self.revertBookmark, self.window)
 			
 		self.revertBookmark = None
 		self._markBuffer()
 
 	def _RemoveDoneCallback(self, index):
 		if index == -1:
-			print ("cancelled")
-			
 			assert self.revertBookmark is not None
-			gotoBookmark(self.revertBookmark, sublime.active_window())
+			gotoBookmark(self.revertBookmark, self.window)
 			return
 		else:
+
+			global BOOKMARKS
+
 			assert index < len(self.bookmarks)
 
 			#remove the mark from the bookmark
-			window = sublime.active_window()
+			window = self.window
 			bookmark = self.bookmarks[index]
 			assert bookmark is not None
 
@@ -359,21 +392,21 @@ class SublimeBookmarkCommand(sublime_plugin.ApplicationCommand):
 		self.revertBookmark = None
 		self._markBuffer()
 
-		#File IO Here!
+		#File IO Here!--------------------
 		self._Save()
 
 
 	#Save-Load----------------------------------------------------------------
 	def _Load(self):
-		print("loading")
+		global BOOKMARKS
 
+		print("LOADING BOOKMARKS")
 		try:
 			savefile = open(self.SAVE_PATH, "rb")
 
 			self.uid = load(savefile)
 			self.bookmarks = load(savefile)
-			
-		
+	
 		except (OSError, IOError) as e:
 			print (e)
 		
@@ -382,12 +415,28 @@ class SublimeBookmarkCommand(sublime_plugin.ApplicationCommand):
 
 
 	def _Save(self):
-		print ("saving")
+		global BOOKMARKS
+		print("SAVING BOOKMARKS")
 
 		try:
 			savefile = open(self.SAVE_PATH, "wb")
+
 			dump(self.uid, savefile)
 			dump(self.bookmarks, savefile)
-
+			savefile.close()
 		except (OSError, IOError) as e:
 			print (e)
+
+
+	def _LoadSettings(self):
+		
+		#not a fan of hardcoding this
+		settings = sublime.load_settings(SETTINGS_NAME)
+		assert settings is not None
+
+		self.showFreeBookmarks = settings.get("always_show_free_bookmarks", True)
+		self.showProjectBookmarks = settings.get("always_show_project_bookmarks", True)
+
+		assert self.showFreeBookmarks is not None
+		assert self.showProjectBookmarks is not None
+
