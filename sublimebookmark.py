@@ -151,9 +151,9 @@ class Bookmark:
 class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 	def __init__(self, window):
 		global BOOKMARKS
-		
+
 		self.window = window
-		self.bookmarks = []
+		BOOKMARKS = []
 		self.thread = None
 		self.uid = 0
 		#bookmark that represents the file from which the panel was activated
@@ -199,7 +199,8 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			self._markBuffer()
 
 		elif type == "save_data":
-			self._Save();
+			pass
+			#self._Save();
 
 		elif type == "move_bookmarks":
 			self._MoveBookmarks();
@@ -212,13 +213,12 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 	def _gotoBookmark(self):
 		#File IO Here!--------------------
-		self._Load()
-
+		
 		window = self.window
 
 		self.revertBookmark = self._createRevertBookmark(window.active_view())
 
-		bookmarkItems = createBookmarkPanelItems(window, self.bookmarks, 
+		bookmarkItems = createBookmarkPanelItems(window, BOOKMARKS, 
 			self.showFreeBookmarks, self.showProjectBookmarks)
 
 		if len(bookmarkItems) == 0:
@@ -230,13 +230,11 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 	def _removeBookmark(self):
 		#File IO Here!--------------------
-		self._Load()
-
 		window = self.window
 
 		self.revertBookmark = self._createRevertBookmark(window.active_view())
 		
-		bookmarkItems = createBookmarkPanelItems(window, self.bookmarks, 
+		bookmarkItems = createBookmarkPanelItems(window, BOOKMARKS, 
 			self.showFreeBookmarks, self.showProjectBookmarks)
 
 		if len(bookmarkItems) == 0:
@@ -253,20 +251,20 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 		global BOOKMARKS
 		
-		for bookmark in self.bookmarks:
+		for bookmark in BOOKMARKS:
 			#unmark all bookmarks that are currently visible for immediate feedback
 			if bookmark.getFilePath() == filePath:
 				unmarkBuffer(view, bookmark)
 
-		del self.bookmarks
-		self.bookmarks = []	
+		del BOOKMARKS
+		BOOKMARKS = []	
 
 	def _unmarkBuffer(self):
 		window = self.window
 		view = window.active_view()
 		filePath = view.file_name()
 		
-		for bookmark in self.bookmarks:
+		for bookmark in BOOKMARKS:
 			if bookmark.getFilePath() == filePath:
 				unmarkBuffer(view, bookmark)
 
@@ -276,7 +274,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		filePath = view.file_name()
 		
 
-		for bookmark in self.bookmarks:
+		for bookmark in BOOKMARKS:
 			shouldShow = shouldShowBookmark(bookmark, window, self.showFreeBookmarks, self.showProjectBookmarks)
 
 			if bookmark.getFilePath() == filePath and shouldShow:
@@ -291,7 +289,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		
 		global BOOKMARKS
 
-		for bookmark in self.bookmarks:
+		for bookmark in BOOKMARKS:
 			if bookmark.getFilePath() == filePath:
 				uid = bookmark.getUid()
 				#load the new region and set the bookmark's region again
@@ -345,7 +343,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		global BOOKMARKS
 
 		bookmark = Bookmark(uID, name, filePath, projectPath, region, lineNumber, lineStr)
-		self.bookmarks.append(bookmark)
+		BOOKMARKS.append(bookmark)
 
 		markBuffer(view, bookmark)
 		
@@ -353,8 +351,8 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		self._Save()
 
 	def _AutoMoveToBookmarkCallback(self, index):
-		assert index < len(self.bookmarks)
-		bookmark = self.bookmarks[index]
+		assert index < len(BOOKMARKS)
+		bookmark = BOOKMARKS[index]
 		assert bookmark is not None
 
 		gotoBookmark(bookmark, self.window)
@@ -377,17 +375,17 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 			global BOOKMARKS
 
-			assert index < len(self.bookmarks)
+			assert index < len(BOOKMARKS)
 
 			#remove the mark from the bookmark
 			window = self.window
-			bookmark = self.bookmarks[index]
+			bookmark = BOOKMARKS[index]
 			assert bookmark is not None
 
 			gotoBookmark(bookmark, window)
 			unmarkBuffer(window.active_view(), bookmark)
 			
-			del self.bookmarks[index]
+			del BOOKMARKS[index]
 
 		self.revertBookmark = None
 		self._markBuffer()
@@ -405,7 +403,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			savefile = open(self.SAVE_PATH, "rb")
 
 			self.uid = load(savefile)
-			self.bookmarks = load(savefile)
+			BOOKMARKS = load(savefile)
 	
 		except (OSError, IOError) as e:
 			print (e)
@@ -422,7 +420,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			savefile = open(self.SAVE_PATH, "wb")
 
 			dump(self.uid, savefile)
-			dump(self.bookmarks, savefile)
+			dump(BOOKMARKS, savefile)
 			savefile.close()
 		except (OSError, IOError) as e:
 			print (e)
