@@ -24,4 +24,16 @@
         "command": "sublime_bookmark",
         "args" : { "type" : "remove_all" }
     },
+
+    {
+        "caption": "Bookmarks: Show All Bookmarks ",
+        "command": "sublime_bookmark",
+        "args" : { "type" : "show_all_bookmarks" }
+    },
+
+    {
+        "caption": "Bookmarks: Show Only Project Bookmarks ",
+        "command": "sublime_bookmark",
+        "args" : { "type" : "show_project_bookmarks" }
+    },
 ]

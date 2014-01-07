@@ -1,18 +1,4 @@
 {
 	//version: 1.0.2
-
-	/*controls whether bookmarks created without a parent project
-	must always be shown. 
-	true: free bookmarks will always be shown, even when other projects are open
-	false: free bookmarks will be shown in no projects are open */
-	"always_show_free_bookmarks": true,
-
-	/*controls whether bookmarks from other projects are shown
-	when a project is already open.
-	true: bookmarks which belong to other projects will always be shown
-	false:  bookmarks which belong to other projects will be shown only when that
-			project is open */
-	"always_show_project_bookmarks": true,
-
 	
 }
