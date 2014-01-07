@@ -34,16 +34,6 @@
 						"caption": "Sublime Bookmarks",
 						"children":
 						[
-							{
-								"command": "open_file",
-								"args": {"file": "${packages}/SublimeBookmarks/SublimeBookmarks.sublime-settings"},
-								"caption": "Settings – Default"
-							},
-							{
-								"command": "open_file",
-								"args": {"file": "${packages}/User/SublimeBookmarks.sublime-settings"},
-								"caption": "Settings – User"
-							},
 							{ "caption": "-" },
                             {
                                 "command": "open_file",

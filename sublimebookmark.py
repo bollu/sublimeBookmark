@@ -3,8 +3,12 @@ import sublime_plugin
 import threading 
 import os.path
 from itertools import islice
-from pickle import dump, load, UnpicklingError
+from pickle import dump, load, UnpicklingError, PicklingError
 from copy import deepcopy
+
+def Log(string):
+	if False:
+		print (string)
 
 REGION_BASE_TAG = "__SublimeBookmark__"
 SETTINGS_NAME = "SublimeBookmarks.sublime-settings"
@@ -196,17 +200,13 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 		currentDir = os.path.dirname(os.path.realpath(__file__))
 		self.SAVE_PATH = currentDir + '/sublimeBookmarks.pickle'
-		print(currentDir)
+		Log(currentDir)
 
 		self._Load()
 		
 
 
 	def run(self, type):
-		settings = sublime.load_settings(SETTINGS_NAME)
-		assert settings is not None
-		#settings.add_on_change("always_show_free_bookmarks", self._LoadSettings())
-		#settings.add_on_change("always_show_project_bookmarks", self._LoadSettings())
 		global SHOW_ALL_BOOKMARKS
 
 		if type == "add":
@@ -237,7 +237,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 	#event handlers----------------------------
 	def _addBookmark(self):
-		print ("add")
+		Log ("add")
 
 		window = self.window
 		view = window.active_view()
@@ -306,7 +306,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		self._Save()
 
 	def _markBuffer(self):
-		print ("MARKING BUFFER")
+		Log ("MARKING BUFFER")
 
 		window = self.window
 		view = window.active_view()
@@ -453,43 +453,38 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 	#Save-Load----------------------------------------------------------------
 	def _Load(self):
 		global BOOKMARKS
+		global SHOW_ALL_BOOKMARKS
 
-		print("LOADING BOOKMARKS")
+		Log("LOADING BOOKMARKS")
 		try:
 			savefile = open(self.SAVE_PATH, "rb")
 
+			SHOW_ALL_BOOKMARKS = load(savefile)
 			self.uid = load(savefile)
 			BOOKMARKS = load(savefile)
 	
-		except (OSError, IOError, UnpicklingError) as e:
+		except (OSError, IOError, UnpicklingError, EOFError) as e:
 			print (e)
 			print("\nUNABLE TO LOAD BOOKMARKS. NUKING LOAD FILE")
 			#clear the load file :]
 			open(self.SAVE_PATH, "wb").close()
+			#if you can't load, try and save a "default" state
+			self._Save()
 		
 	def _Save(self):
 		global BOOKMARKS
-		print("SAVING BOOKMARKS")
+		global SHOW_ALL_BOOKMARKS
+
+		Log("SAVING BOOKMARKS")
 
 		try:
 			savefile = open(self.SAVE_PATH, "wb")
 
+			dump(SHOW_ALL_BOOKMARKS, savefile)
 			dump(self.uid, savefile)
 			dump(BOOKMARKS, savefile)
+
 			savefile.close()
-		except (OSError, IOError) as e:
+		except (OSError, IOError, PicklingError) as e:
 			print (e)
-
-
-	def _LoadSettings(self):
-		
-		#not a fan of hardcoding this
-		settings = sublime.load_settings(SETTINGS_NAME)
-		assert settings is not None
-
-		#self.showFreeBookmarks = settings.get("always_show_free_bookmarks", True)
-		#self.showProjectBookmarks = settings.get("always_show_project_bookmarks", True)
-
-		#assert self.showFreeBookmarks is not None
-		#assert self.showProjectBookmarks is not None
-
+			print("\nUNABLE TO SAVE BOOKMARKS. PLEASE CONTACT DEV")
