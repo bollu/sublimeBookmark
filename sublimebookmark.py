@@ -4,6 +4,7 @@ import threading
 import os.path
 from itertools import islice
 from pickle import dump, load
+from copy import deepcopy
 
 REGION_BASE_TAG = "__SublimeBookmark__"
 SETTINGS_NAME = "SublimeBookmarks.sublime-settings"
@@ -11,6 +12,12 @@ SETTINGS_NAME = "SublimeBookmarks.sublime-settings"
 NO_PROJECT = "___NO_PROJECT_PRESENT____"
 
 BOOKMARKS = []
+
+#list of bookmarks that have ben deleted. 
+#This is used to remove bookmarks' buffer highlights. Without this, if a bookmark is removed,
+#when a file is revisited, the buffer will still be marked. This will keep track of bookmarks
+#that have been removed.
+ERASED_BOOKMARKS = []
 
 class OptionsSelector(threading.Thread):
 	def __init__(self, window, panelItems, onDone, onHighlight):
@@ -23,7 +30,9 @@ class OptionsSelector(threading.Thread):
 
 	def run(self):
 		view = self.window.active_view()
-		self.window.show_quick_panel(self.panelItems, self.onDone, 0, -1, self.onHighlight)
+		startIndex = 0
+		
+		self.window.show_quick_panel(self.panelItems, self.onDone, startIndex, 0, self.onHighlight)
 
 class OptionsInput(threading.Thread):
 	def __init__(self, window, caption, initalText, onDone, onCancel):
@@ -40,24 +49,24 @@ class OptionsInput(threading.Thread):
 		self.window.show_input_panel(self.caption, self.initalText, self.onDone, None, self.onCancel)
 
 #helper functions--------------------------------
-#Region manipulation-----
+#Region manipulation-----------------------------
 def getCurrentLineRegion(view):
 	(row, col) = view.rowcol(view.sel()[0].begin())
 	pt = view.text_point(row, col)
-	region =  view.line(pt)
+	region =  view.full_line(pt)
 
 	return region 
 
 def markBuffer(view, bookmark):
 	uid = bookmark.getUid()
 	region  = bookmark.getRegion()
-	view.add_regions(str(uid), [region], "text.plain", "bookmark", sublime.DRAW_NO_FILL)
+	view.add_regions(str(uid), [region], "text.plain", "bookmark", sublime.DRAW_NO_FILL | sublime.DRAW_EMPTY_AS_OVERWRITE)
 
 def unmarkBuffer(view, bookmark):
 	uid = bookmark.getUid()
 	view.erase_regions(str(uid))
 
-#Bookmark manipulation------------
+#Bookmark manipulation---------------------
 def genUid(count):
 	return REGION_BASE_TAG + str(count)
 	
@@ -66,16 +75,19 @@ def gotoBookmark(bookmark, window):
 	filePath = bookmark.getFilePath()
 	lineNumber = bookmark.getLineNumber()
 
-	view = window.open_file(filePath, sublime.TRANSIENT)
+	rowCol = ":" + str(0) + ":" + str(lineNumber)
+
+	view = window.open_file(filePath + rowCol, sublime.TRANSIENT | sublime.ENCODED_POSITION)
 	view.show_at_center(bookmark.getRegion())
 
 
 def shouldShowBookmark(bookmark, window, showFreeBookmarks, showProjectBookmarks):
 	currentProjectPath = window.project_file_name()
-
+	return True
+	
 	return (showFreeBookmarks and bookmark.getProjectPath() == NO_PROJECT) or \
 		   (showProjectBookmarks and bookmark.getProjectPath() == currentProjectPath)
-#Menu generation---------
+#Menu generation-----------------------------------
 def ellipsisStringEnd(string, length):
 	#I have NO idea why the hell this would happen. But it's happening.
 	if string is None:
@@ -106,6 +118,9 @@ def createBookmarkPanelItems(window, bookmarks, showFreeBookmarks, showProjectBo
 
 	return bookmarkItems
 
+
+def setStatus(statusMessage):
+	sublime.status_message(statusMessage)
 
 
 #Bookmark-----------
@@ -191,16 +206,8 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		elif type == "remove_all":
 			self._removeAllBookmarks()
 
-		elif type == "unmark_buffer":
-			pass
-			#self._unmarkBuffer()
-
 		elif type == "mark_buffer":
 			self._markBuffer()
-
-		elif type == "save_data":
-			pass
-			#self._Save();
 
 		elif type == "move_bookmarks":
 			self._MoveBookmarks();
@@ -250,8 +257,11 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		filePath = view.file_name()
 
 		global BOOKMARKS
+		global ERASED_BOOKMARKS
 		
 		for bookmark in BOOKMARKS:
+			#store erased bookmarks for delayed removal
+			ERASED_BOOKMARKS.append(deepcopy(bookmark))
 			#unmark all bookmarks that are currently visible for immediate feedback
 			if bookmark.getFilePath() == filePath:
 				unmarkBuffer(view, bookmark)
@@ -259,27 +269,22 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		del BOOKMARKS
 		BOOKMARKS = []	
 
-	def _unmarkBuffer(self):
-		window = self.window
-		view = window.active_view()
-		filePath = view.file_name()
-		
-		for bookmark in BOOKMARKS:
-			if bookmark.getFilePath() == filePath:
-				unmarkBuffer(view, bookmark)
-
 	def _markBuffer(self):
+		print ("MARKING BUFFER")
 		window = self.window
 		view = window.active_view()
 		filePath = view.file_name()
 		
-
+		#marked all bookmarks that are visible
 		for bookmark in BOOKMARKS:
 			shouldShow = shouldShowBookmark(bookmark, window, self.showFreeBookmarks, self.showProjectBookmarks)
 
 			if bookmark.getFilePath() == filePath and shouldShow:
 				markBuffer(view, bookmark)
-			else:
+			
+		#unmark all erased bookmarks
+		for bookmark in ERASED_BOOKMARKS:
+			if bookmark.getFilePath() == filePath:
 				unmarkBuffer(view, bookmark)
 
 	def _MoveBookmarks(self):
@@ -374,6 +379,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		else:
 
 			global BOOKMARKS
+			global ERASED_BOOKMARKS
 
 			assert index < len(BOOKMARKS)
 
@@ -385,6 +391,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			gotoBookmark(bookmark, window)
 			unmarkBuffer(window.active_view(), bookmark)
 			
+			ERASED_BOOKMARKS.append(deepcopy(bookmark))
 			del BOOKMARKS[index]
 
 		self.revertBookmark = None
