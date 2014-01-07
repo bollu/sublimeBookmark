@@ -39,7 +39,7 @@ class OptionsSelector(threading.Thread):
 		view = self.window.active_view()
 		startIndex = 0
 		
-		self.window.show_quick_panel(self.panelItems, self.onDone, startIndex, 0, self.onHighlight)
+		self.window.show_quick_panel(self.panelItems, self.onDone, 0, startIndex, self.onHighlight)
 
 class OptionsInput(threading.Thread):
 	def __init__(self, window, caption, initalText, onDone, onCancel):
@@ -53,8 +53,15 @@ class OptionsInput(threading.Thread):
 
 	def run(self):
 		view = self.window.active_view()
-		self.window.show_input_panel(self.caption, self.initalText, self.onDone, None, self.onCancel)
+		inputPanelView = self.window.show_input_panel(self.caption, self.initalText, self.onDone, None, self.onCancel)
 
+		#select the text in the view so that when the user types a new name, the old name
+		#is overwritten
+		assert (len(inputPanelView.sel()) > 0)
+		selectionRegion = inputPanelView.full_line(inputPanelView.sel()[0])
+		print ("DATA: " + inputPanelView.substr(selectionRegion))
+		inputPanelView.sel().add(selectionRegion)
+	
 #helper functions--------------------------------
 #Region manipulation-----------------------------
 def getCurrentLineRegion(view):
