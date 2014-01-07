@@ -3,7 +3,7 @@ import sublime_plugin
 import threading 
 import os.path
 from itertools import islice
-from pickle import dump, load
+from pickle import dump, load, UnpicklingError
 from copy import deepcopy
 
 REGION_BASE_TAG = "__SublimeBookmark__"
@@ -54,9 +54,10 @@ class OptionsInput(threading.Thread):
 #helper functions--------------------------------
 #Region manipulation-----------------------------
 def getCurrentLineRegion(view):
-	(row, col) = view.rowcol(view.sel()[0].begin())
-	pt = view.text_point(row, col)
-	region =  view.full_line(pt)
+
+	assert (len(view.sel()) > 0)
+	selectedRegion = view.sel()[0]
+	region =  view.line(selectedRegion)
 
 	return region 
 
@@ -83,9 +84,11 @@ def gotoBookmark(bookmark, window):
 	view = window.open_file(filePath + rowCol, sublime.TRANSIENT | sublime.ENCODED_POSITION)
 	view.show_at_center(bookmark.getRegion())
 
-	#move cursor to given position
+	#move cursor to the middle of the bookmark's region
+	bookmarkRegionMid = 0.5 * (bookmark.getRegion().begin() +  bookmark.getRegion().end())
+	moveRegion = sublime.Region(bookmarkRegionMid, bookmarkRegionMid)
 	view.sel().clear()
-	view.sel().add(bookmark.getRegion())
+	view.sel().add(moveRegion)
 
 
 def shouldShowBookmark(bookmark, window, showAllBookmarks):
@@ -123,7 +126,10 @@ def createBookmarkPanelItems(window, bookmarks, shouldShowAllBookmarks):
 		if shouldShowBookmark(bookmark, window, shouldShowAllBookmarks):
 
 			bookmarkName = bookmark.getName()
-			bookmarkLine = ellipsisStringEnd(bookmark.getLineStr(), 55)
+
+			lineStrRaw = bookmark.getLineStr()
+			bookmarkLine = ellipsisStringEnd(lineStrRaw.strip(), 55)
+
 			bookmarkFile = ellipsisStringBegin(bookmark.getFilePath(), 55)
 
 			bookmarkItems.append( [bookmarkName, bookmarkLine, bookmarkFile] )
@@ -232,7 +238,15 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 	#event handlers----------------------------
 	def _addBookmark(self):
 		print ("add")
-		input = OptionsInput(self.window, "Add Bookmark", "", self._AddBookmarkCallback, None)
+
+		window = self.window
+		view = window.active_view()
+		region = getCurrentLineRegion(view)
+
+		#copy whatever is on the line for the bookmark name
+		initialText = view.substr(region)
+
+		input = OptionsInput(self.window, "Add Bookmark", initialText, self._AddBookmarkCallback, None)
 		input.start()
 
 	def _gotoBookmark(self):
@@ -328,7 +342,8 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 				if len(regions) == 0:
 					return
 
-				newRegion = view.get_regions(str(uid))[0]
+				#keep the new region on the *WHOLE* line
+				newRegion = view.line(regions[0])
 				newLineStr = view.substr(newRegion) 
 
 				assert newRegion is not None
@@ -402,6 +417,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		self.revertBookmark = None
 		self._markBuffer()
 
+
 	#remove the selected bookmark or go back if user cancelled
 	def _RemoveDoneCallback(self, index):
 		if index == -1:
@@ -445,13 +461,12 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			self.uid = load(savefile)
 			BOOKMARKS = load(savefile)
 	
-		except (OSError, IOError) as e:
+		except (OSError, IOError, UnpicklingError) as e:
 			print (e)
+			print("\nUNABLE TO LOAD BOOKMARKS. NUKING LOAD FILE")
+			#clear the load file :]
+			open(self.SAVE_PATH, "wb").close()
 		
-		#now mark the buffer
-		#self._markBuffer()
-
-
 	def _Save(self):
 		global BOOKMARKS
 		print("SAVING BOOKMARKS")
