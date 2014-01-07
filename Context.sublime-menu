@@ -4,9 +4,8 @@
   },
   
   {
-
+  	"caption": "Add bookmark",
     "command": "sublime_bookmark",
-    "caption": "Add bookmark",
      "args" : { "type" : "add" }
   }, 
 ]

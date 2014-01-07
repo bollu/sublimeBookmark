@@ -220,9 +220,13 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 		elif type == "show_all_bookmarks":
 			SHOW_ALL_BOOKMARKS = True
+			self._Save()
+			self._markBuffer()
 
 		elif type == "show_project_bookmarks":
 			SHOW_ALL_BOOKMARKS = False
+			self._Save()
+			self._markBuffer()
 
 		elif type == "remove_all":
 			self._removeAllBookmarks()
@@ -318,7 +322,9 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 			if bookmark.getFilePath() == filePath and shouldShow:
 				markBuffer(view, bookmark)
-			
+			else:
+				unmarkBuffer(view, bookmark)
+				
 		#unmark all erased bookmarks
 		for bookmark in ERASED_BOOKMARKS:
 			if bookmark.getFilePath() == filePath:
@@ -356,6 +362,10 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 	#helpers-------------------------------------------
 
 	def _createRevertBookmark(self, activeView):
+		#there's no file open. return None 'cause there's no place to return TO
+		if activeView is None:
+			return None
+
 		name = ""
 		filePath = activeView.file_name()
 		projectPath = ""
@@ -410,8 +420,8 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 	
 	#if the user cancelled, go back to the original file
 	def _HilightDoneCallback(self, index):
-		if index == -1:
-			assert self.revertBookmark is not None
+		#if we started from a blank window, self.revertBookmark CAN be None
+		if index == -1 and self.revertBookmark is not None:
 			gotoBookmark(self.revertBookmark, self.window)
 			
 		self.revertBookmark = None
@@ -420,8 +430,8 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 	#remove the selected bookmark or go back if user cancelled
 	def _RemoveDoneCallback(self, index):
-		if index == -1:
-			assert self.revertBookmark is not None
+		#if we started from a blank window, self.revertBookmark CAN be None
+		if index == -1 and self.revertBookmark is not None:
 			gotoBookmark(self.revertBookmark, self.window)
 			return
 		else:
