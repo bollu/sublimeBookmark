@@ -16,6 +16,7 @@ SETTINGS_NAME = "SublimeBookmarks.sublime-settings"
 NO_PROJECT = "___NO_PROJECT_PRESENT____"
 
 BOOKMARKS = []
+UID = None
 
 #list of bookmarks that have ben deleted. 
 #This is used to remove bookmarks' buffer highlights. Without this, if a bookmark is removed,
@@ -115,6 +116,8 @@ def shouldShowBookmark(bookmark, window, showAllBookmarks):
 	#return if the bookmark belongs to current project or not.
 	else:
 		return bookmark.getProjectPath() == currentProjectPath
+
+
 #Menu generation-----------------------------------
 def ellipsisStringEnd(string, length):
 	#I have NO idea why the hell this would happen. But it's happening.
@@ -197,11 +200,14 @@ class Bookmark:
 class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 	def __init__(self, window):
 		global BOOKMARKS
+		global UID 
 
 		self.window = window
 		BOOKMARKS = []
 		self.thread = None
-		self.uid = 0
+
+		#initialize to 0
+		UID = 0
 		#bookmark that represents the file from which the panel was activated
 		self.revertBookmark = None
 
@@ -386,6 +392,8 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 	#callbacks---------------------------------------------------
 	def _AddBookmarkCallback(self, name):
+
+
 		window = self.window
 		view = window.active_view()
 		filePath = view.file_name()
@@ -396,8 +404,9 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			projectPath = NO_PROJECT
 
 		#set the uID and increment it
-		uID = self.uid
-		self.uid = self.uid + 1
+		global UID
+		uID = UID
+		UID = UID + 1
 
 		#get region and line data
 		region = getCurrentLineRegion(view)
@@ -471,13 +480,14 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 	def _Load(self):
 		global BOOKMARKS
 		global SHOW_ALL_BOOKMARKS
+		global UID
 
 		Log("LOADING BOOKMARKS")
 		try:
 			savefile = open(self.SAVE_PATH, "rb")
 
 			SHOW_ALL_BOOKMARKS = load(savefile)
-			self.uid = load(savefile)
+			UID = load(savefile)
 			BOOKMARKS = load(savefile)
 	
 		except (OSError, IOError, UnpicklingError, EOFError) as e:
@@ -491,6 +501,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 	def _Save(self):
 		global BOOKMARKS
 		global SHOW_ALL_BOOKMARKS
+		global UID
 
 		Log("SAVING BOOKMARKS")
 
@@ -498,7 +509,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			savefile = open(self.SAVE_PATH, "wb")
 
 			dump(SHOW_ALL_BOOKMARKS, savefile)
-			dump(self.uid, savefile)
+			dump(UID, savefile)
 			dump(BOOKMARKS, savefile)
 
 			savefile.close()
