@@ -205,7 +205,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		#bookmark that represents the file from which the panel was activated
 		self.revertBookmark = None
 
-		currentDir = dirname(sublime.packages_path())
+		currentDir = os.path.dirname(sublime.packages_path())
 		self.SAVE_PATH = currentDir + '/sublimeBookmarks.pickle'
 		Log(currentDir)
 
