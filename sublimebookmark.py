@@ -91,9 +91,23 @@ def gotoBookmark(bookmark, window):
 	filePath = bookmark.getFilePath()
 	lineNumber = bookmark.getLineNumber()
 
-	rowCol = ":" + str(0) + ":" + str(lineNumber)
+	#Okay, so there's a bug in sublime text.
+	#if you open a file *before* opening the options menu,
+	#the options menu gets created where the file is opened
+	#Yes, this is stupid.
 
-	view = window.open_file(filePath + rowCol, sublime.TRANSIENT | sublime.ENCODED_POSITION)
+	#This happens in this plugin, since the _AutoMove() callback
+	#seems to be called before the options menu is shown
+	#So, if I open the file in another group, the options menu
+	#opens in the *other* group, and not the current group.
+	#I don't know if it's my bug or sublime text's but I have
+	#a feeling it's sublime text's bug. Will have to report
+	#this. This is a pain...
+	activeGroup = window.active_group()
+	view = window.open_file(filePath)
+
+	#open the view in the active group.
+	window.set_view_index(view, activeGroup, 0)
 	view.show_at_center(bookmark.getRegion())
 
 	#move cursor to the middle of the bookmark's region
