@@ -8,7 +8,10 @@ a better bookmark system for SublimeText
 Motivation
 ==========
 
-Let's face it: sublime text's bookmark system __sucks__. __<rant>__ It doesn't support named bookmarks. It doesn't save bookmark statuses, and it is just terrible to use overall. __</rant>_.
+Let's face it: sublime text's bookmark system __sucks__.
+ __\<rant\>__
+ It doesn't support named bookmarks. It doesn't save bookmark statuses, and it is just terrible to use overall.
+  __\</rant\>__.
 
 This is a replacement for sublime text's bookmark functionality. It's slicker and easier to use, and has way more features. 
 
@@ -58,18 +61,23 @@ Press ```ctrl + shift + P```  on Windows / Linux or ```cmd + shift + P``` on Mac
 
 To remove _all_ bookmarks, select the option ```SublimeBookmarks:Remove All Bookmarks (Clear Bookmarks)```. This will clear _all bookmarks_. This _can not be undone_.  
 
-##Projects and SublimeBookmarks##
+
+
+##Projects:##
 
 SublimeBookmarks tries to be smart and by default, only shows bookmarks that belong to the current project. So, if a bookmark is created when you are in a certain project, this bookmark will be visible __only when you are viewing that particular project__.
 
+
 ###Viewing all Bookmarks###
+
 To view all bookmarks - not just bookmarks that belong to the project you are working on:
 
  Press ```ctrl + shift + P```  on Windows / Linux or ```cmd + shift + P``` on Mac and select ```SublimeBookmarks:Show All Bookmarks```
 
  This will show __all__ bookmarks created
 
- ###Viewing only Project Bookmarks###
+
+###Viewing only Project Bookmarks###
 
 To view bookmarks that only belong to the current project:
 
