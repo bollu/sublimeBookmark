@@ -2,7 +2,6 @@ import sublime
 import sublime_plugin
 import threading 
 import os.path
-from itertools import islice
 from pickle import dump, load, UnpicklingError, PicklingError
 from copy import deepcopy
 
@@ -10,7 +9,7 @@ def Log(string):
 	if False:
 		print (string)
 
-REGION_BASE_TAG = "__SublimeBookmark__"
+REGION_BASE_TAG = int(11001001000011111101)
 SETTINGS_NAME = "SublimeBookmarks.sublime-settings"
 #if someone names their project this, we're boned
 NO_PROJECT = "___NO_PROJECT_PRESENT____"
@@ -27,22 +26,21 @@ ERASED_BOOKMARKS = []
 #whether all bookmarks (even unrelated) should be shown
 SHOW_ALL_BOOKMARKS = True
 
-class OptionsSelector(threading.Thread):
+class OptionsSelector:
 	def __init__(self, window, panelItems, onDone, onHighlight):
 		self.window = window
 		self.panelItems = panelItems
 		self.onDone = onDone
 		self.onHighlight = onHighlight
 
-		threading.Thread.__init__(self)
-
-	def run(self):
+		
+	def start(self):
 		view = self.window.active_view()
 		startIndex = 0
 		
 		self.window.show_quick_panel(self.panelItems, self.onDone, 0, startIndex, self.onHighlight)
 
-class OptionsInput(threading.Thread):
+class OptionsInput:
 	def __init__(self, window, caption, initalText, onDone, onCancel):
 		self.window = window
 		self.caption = caption
@@ -50,9 +48,8 @@ class OptionsInput(threading.Thread):
 		self.onDone = onDone
 		self.onCancel = onCancel
 
-		threading.Thread.__init__(self)
-
-	def run(self):
+		
+	def start(self):
 		view = self.window.active_view()
 		inputPanelView = self.window.show_input_panel(self.caption, self.initalText, self.onDone, None, self.onCancel)
 
@@ -83,10 +80,6 @@ def unmarkBuffer(view, bookmark):
 	view.erase_regions(str(uid))
 
 #Bookmark manipulation---------------------
-def genUid(count):
-	return REGION_BASE_TAG + str(count)
-	
-
 def gotoBookmark(bookmark, window):
 	filePath = bookmark.getFilePath()
 	lineNumber = bookmark.getLineNumber()
@@ -133,21 +126,23 @@ def shouldShowBookmark(bookmark, window, showAllBookmarks):
 
 
 #Menu generation-----------------------------------
-def ellipsisStringEnd(string, length):
-	#I have NO idea why the hell this would happen. But it's happening.
-	if string is None:
-		return ""
-	else:
-		return string if len(string) <= length else string[ 0 : length - 3] + '...'
-
-
-def ellipsisStringBegin(string, length):
-	if string is None:
-		return ""
-	else:	
-		return string if len(string) <= length else '...' + string[ len(string) + 3 - (length)  : len(string) ] 
 
 def createBookmarkPanelItems(window, bookmarks, shouldShowAllBookmarks):	
+	def ellipsisStringEnd(string, length):
+		#I have NO idea why the hell this would happen. But it's happening.
+		if string is None:
+			return ""
+		else:
+			return string if len(string) <= length else string[ 0 : length - 3] + '...'
+
+
+	def ellipsisStringBegin(string, length):
+		if string is None:
+			return ""
+		else:	
+			return string if len(string) <= length else '...' + string[ len(string) + 3 - (length)  : len(string) ] 
+
+
 	bookmarkItems = []
 	
 	for bookmark in bookmarks:
@@ -167,7 +162,7 @@ def createBookmarkPanelItems(window, bookmarks, shouldShowAllBookmarks):
 	return bookmarkItems
 
 
-def setStatus(statusMessage):
+def showMessage(statusMessage):
 	sublime.status_message(statusMessage)
 
 
@@ -217,14 +212,16 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		global UID 
 
 		self.window = window
-		BOOKMARKS = []
-		self.thread = None
+		self.revertBookmark = None
+		#the region to revert to
+		self.revertBookmarkGroup = None
 
+		BOOKMARKS = []
+		
 		#initialize to 0
 		UID = 0
-		#bookmark that represents the file from which the panel was activated
-		self.revertBookmark = None
 
+		#bookmark that represents the file from which the panel was activated
 		currentDir = os.path.dirname(sublime.packages_path())
 		self.SAVE_PATH = currentDir + '/sublimeBookmarks.pickle'
 		Log(currentDir)
@@ -248,21 +245,21 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		elif type == "show_all_bookmarks":
 			SHOW_ALL_BOOKMARKS = True
 			self._Save()
-			self._markBuffer()
+			self._updateBufferStatus()
 
 		elif type == "show_project_bookmarks":
 			SHOW_ALL_BOOKMARKS = False
 			self._Save()
-			self._markBuffer()
+			self._updateBufferStatus()
 
 		elif type == "remove_all":
 			self._removeAllBookmarks()
 
 		elif type == "mark_buffer":
-			self._markBuffer()
+			self._updateBufferStatus()
 
 		elif type == "move_bookmarks":
-			self._MoveBookmarks();
+			self._UpdateBookmarkPosition();
 
 
 
@@ -336,7 +333,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		#save to eternal storage
 		self._Save()
 
-	def _markBuffer(self):
+	def _updateBufferStatus(self):
 		Log ("MARKING BUFFER")
 
 		window = self.window
@@ -357,7 +354,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			if bookmark.getFilePath() == filePath:
 				unmarkBuffer(view, bookmark)
 
-	def _MoveBookmarks(self):
+	def _UpdateBookmarkPosition(self):
 		window = self.window
 		view = window.active_view()
 		filePath = view.file_name()
@@ -387,7 +384,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 				markBuffer(view, bookmark)
 					
 	#helpers-------------------------------------------
-
+	#creates a bookmark that keeps track of where we were. 
 	def _createRevertBookmark(self, activeView):
 		#there's no file open. return None 'cause there's no place to return TO
 		if activeView is None:
@@ -396,14 +393,19 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		name = ""
 		filePath = activeView.file_name()
 		projectPath = ""
-		uID = -1
+		uID = REGION_BASE_TAG * (-1)
 
 		region = getCurrentLineRegion(activeView)
 		lineStr = ""
 		lineNumber = activeView.rowcol(activeView.sel()[0].begin())[0]
 
+		self.revertBookmarkGroup = activeView.window().active_group()
 		return Bookmark(uID, name, filePath, projectPath, region, lineNumber, lineStr)
 
+	def _gotoRevertBookmar(self, revertBookmark):
+		gotoBookmark(self.revertBookmark, self.window)
+		self.revertBookmark = None
+		
 	#callbacks---------------------------------------------------
 	def _AddBookmarkCallback(self, name):
 
@@ -419,7 +421,8 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 		#set the uID and increment it
 		global UID
-		uID = UID
+		myUID = UID
+		myUID = REGION_BASE_TAG + myUID
 		UID = UID + 1
 
 		#get region and line data
@@ -430,7 +433,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		#create a bookmark and add it to the global list
 		global BOOKMARKS
 
-		bookmark = Bookmark(uID, name, filePath, projectPath, region, lineNumber, lineStr)
+		bookmark = Bookmark(myUID, name, filePath, projectPath, region, lineNumber, lineStr)
 		BOOKMARKS.append(bookmark)
 
 		markBuffer(view, bookmark)
@@ -446,7 +449,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 		#goto highlighted bookmark
 		gotoBookmark(bookmark, self.window)
-		self._markBuffer()
+		self._updateBufferStatus()
 	
 	#if the user cancelled, go back to the original file
 	def _HilightDoneCallback(self, index):
@@ -455,7 +458,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			gotoBookmark(self.revertBookmark, self.window)
 			
 		self.revertBookmark = None
-		self._markBuffer()
+		self._updateBufferStatus()
 
 
 	#remove the selected bookmark or go back if user cancelled
@@ -484,7 +487,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			del BOOKMARKS[index]
 
 		self.revertBookmark = None
-		self._markBuffer()
+		self._updateBufferStatus()
 
 		#File IO Here!--------------------
 		self._Save()
