@@ -8,9 +8,9 @@ a better bookmark system for SublimeText
 Motivation
 ==========
 
-Let's face it: sublime text's bookmark system __sucks__. _rant_ It doesn't support named bookmarks. It doesn't save bookmark statuses, and it is just terrible to use overall. _/rant_.
+Let's face it: sublime text's bookmark system __sucks__. __<rant>__ It doesn't support named bookmarks. It doesn't save bookmark statuses, and it is just terrible to use overall. __</rant>_.
 
-This is a replacement for sublime text's bookmark functionality. It's slicker and easier to use, and is persistent. 
+This is a replacement for sublime text's bookmark functionality. It's slicker and easier to use, and has way more features. 
 
 **Note**: As of now, This is only for **Sublime Text 3**.
 
@@ -46,17 +46,36 @@ To Use
 
 ###Adding Bookmarks###
 
-Go to a line you wish to bookmark. Press ```ctrl + shift + P``` on Windows / Linux or ```cmd + shift + P``` on Mac and type ```Add Bookmark```. This opens up a panel where you can type the name of your bookmark. Once you're done naming your shiny new bookmark, hit ```Enter```. You should see a tiny yellow triangle next to your line. you're done!
+Go to a line you wish to bookmark. Press ```ctrl + shift + P``` on Windows / Linux or ```cmd + shift + P``` on Mac and type ```SublimeBookmarks:Add Bookmark```. This opens up a panel where you can type the name of your bookmark. Once you're done naming your shiny new bookmark, hit ```Enter```. You should see a tiny yellow triangle next to your line. you're done!
 
 
 ###Accessing Bookmarks###
-Press ```ctrl + shift + P```  on Windows / Linux or ```cmd + shift + P``` on Mac and select ```Goto Bookmark```. This will bring up a list of all bookmarks. Type in the bookmark name you want to go to and press ```Enter``` to go to the bookmark 
+Press ```ctrl + shift + P```  on Windows / Linux or ```cmd + shift + P``` on Mac and select ```SublimeBookmarks:Goto Bookmark```. This will bring up a list of all bookmarks. Type in the bookmark name you want to go to and press ```Enter``` to go to the bookmark 
 
 
 ###Removing Bookmarks###
 Press ```ctrl + shift + P```  on Windows / Linux or ```cmd + shift + P``` on Mac and select ```Remove Bookmark```. Type the name of the bookmark you want to remove and press ```Enter```. This will remove the bookmark
 
-To remove _all_ bookmarks, select the option ```Remove All Bookmarks (Clear Bookmarks)```. This will clear _all bookmarks_. This _can not be undone_.  
+To remove _all_ bookmarks, select the option ```SublimeBookmarks:Remove All Bookmarks (Clear Bookmarks)```. This will clear _all bookmarks_. This _can not be undone_.  
+
+##Projects and SublimeBookmarks##
+
+SublimeBookmarks tries to be smart and by default, only shows bookmarks that belong to the current project. So, if a bookmark is created when you are in a certain project, this bookmark will be visible __only when you are viewing that particular project__.
+
+###Viewing all Bookmarks###
+To view all bookmarks - not just bookmarks that belong to the project you are working on:
+
+ Press ```ctrl + shift + P```  on Windows / Linux or ```cmd + shift + P``` on Mac and select ```SublimeBookmarks:Show All Bookmarks```
+
+ This will show __all__ bookmarks created
+
+ ###Viewing only Project Bookmarks###
+
+To view bookmarks that only belong to the current project:
+
+ Press ```ctrl + shift + P```  on Windows / Linux or ```cmd + shift + P``` on Mac and select ```SublimeBookmarks:Show Only Project Bookmarks```
+
+This will only show bookmarks that belong to the current project.
 
 Notes / Addendum
 ================
