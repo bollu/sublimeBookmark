@@ -74,13 +74,20 @@ def getCurrentLineRegion(view):
 def moveViewToGroup(window, view, group):
 	(viewGroup, viewIndex) = window.get_view_index(view) 
 
-	#the view is in the required group,
-	#so we don't need to do anything.
-	if group == viewGroup:
-		pass
+
+	#the view is not in the required group so move it
 	#we have to move the view to the other group and give it a new index
-	else:
-		print("DIFFERENT")
+	if group != viewGroup or viewGroup == -1 or viewIndex == -1:
+		
+		#SUBLIME_BUG
+		#if the group the view is currently in has only one element - i.e  this view,
+		#sublime text goes crazy and closes our options selector. So, we have to create
+		#a new file in the old group and *only then* move the view.
+		if len(window.views_in_group(viewGroup)) == 1:
+			window.focus_group(viewGroup)
+			window.new_file()
+
+
 		#if there are 0 views, then the moved view will have index 0
 		#similarly, if there are n views, the last view will have index (n-1), and
 		#so the new view will have index n  
@@ -89,11 +96,16 @@ def moveViewToGroup(window, view, group):
 		#correct index
 		window.set_view_index(view, group, newIndex)
 
+	#the view is in the right group, so chill
+	else:
+		pass
+
 
 def gotoBookmark(bookmark, window):
 	filePath = bookmark.getFilePath()
 	lineNumber = bookmark.getLineNumber()
 
+	#SUBLIME_BUG
 	#Okay, so there's a bug in sublime text.
 	#if you open a file *before* opening the options menu,
 	#the options menu gets created where the file is opened
@@ -117,7 +129,7 @@ def gotoBookmark(bookmark, window):
 	moveViewToGroup(window, view, activeGroup)
 
 	#focus on the active group to avoid the panel problem as described
-	window.focus_group(activeGroup)	
+	#window.focus_group(activeGroup)	
 	window.focus_view(view)
 	#show bookmark :)
 	view.show_at_center(bookmark.getRegion())
@@ -128,6 +140,20 @@ def gotoBookmark(bookmark, window):
 	view.sel().clear()
 	view.sel().add(moveRegion)
 
+
+def restoreFile(bookmark, window):
+	def groupExists(group):
+		return group < window.num_groups()
+
+	filePath = bookmark.getFilePath()
+	lineNumber = bookmark.getLineNumber()
+
+	view = window.open_file(filePath)
+
+	group = bookmark.getGroup()
+	if groupExists(group):
+		print ("RESTORING")
+		moveViewToGroup(window, view, bookmark.getGroup())
 
 def shouldShowBookmark(bookmark, window, showAllBookmarks):
 	currentProjectPath = window.project_file_name()
@@ -393,7 +419,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		window = self.window
 		view = window.active_view()
 		filePath = view.file_name()
-		
+			
 		global BOOKMARKS
 
 		for bookmark in BOOKMARKS:
@@ -448,7 +474,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 
 		region = getCurrentLineRegion(activeView)
-		group = self.window.active_group()
+		group = self.window.get_view_index(activeView)[0]
 
 		uid = (-1) * REGION_BASE_TAG #does not matter
 		name = "" #does not matter
@@ -465,6 +491,8 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			return
 
 		gotoBookmark(self.revertBookmark, self.window)
+		#restoreFile(self.revertBookmark, self.window)
+
 		self.revertBookmark = None
 		
 	#callbacks---------------------------------------------------
