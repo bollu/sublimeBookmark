@@ -105,33 +105,7 @@ def gotoBookmark(bookmark, window):
 	filePath = bookmark.getFilePath()
 	lineNumber = bookmark.getLineNumber()
 
-	#SUBLIME_BUG
-	#Okay, so there's a bug in sublime text.
-	#if you open a file *before* opening the options menu,
-	#the options menu gets created where the file is opened
-	#Yes, this is stupid.
-
-	#This happens in this plugin, since the _AutoMove() callback
-	#seems to be called before the options menu is shown
-	#So, if I open the file in another group, the options menu
-	#opens in the *other* group, and not the current group.
-	#I don't know if it's my bug or sublime text's but I have
-	#a feeling it's sublime text's bug. Will have to report
-	#this. This is a pain...
-
-	#this line's order is important. This needs to be done first
-	#since opening a file will cause the active group to change
-	activeGroup = window.active_group()
-	
-
 	view = window.open_file(filePath)
-	#move the view to the currently active group
-	moveViewToGroup(window, view, activeGroup)
-
-	#focus on the active group to avoid the panel problem as described
-	#window.focus_group(activeGroup)	
-	window.focus_view(view)
-	#show bookmark :)
 	view.show_at_center(bookmark.getRegion())
 		
 	#move cursor to the middle of the bookmark's region
@@ -140,20 +114,6 @@ def gotoBookmark(bookmark, window):
 	view.sel().clear()
 	view.sel().add(moveRegion)
 
-
-def restoreFile(bookmark, window):
-	def groupExists(group):
-		return group < window.num_groups()
-
-	filePath = bookmark.getFilePath()
-	lineNumber = bookmark.getLineNumber()
-
-	view = window.open_file(filePath)
-
-	group = bookmark.getGroup()
-	if groupExists(group):
-		print ("RESTORING")
-		moveViewToGroup(window, view, bookmark.getGroup())
 
 def shouldShowBookmark(bookmark, window, showAllBookmarks):
 	currentProjectPath = window.project_file_name()
@@ -275,6 +235,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 		#the bookmark to go to if the user cancels
 		self.revertBookmark = None
+		self.activeGroup = 0 
 		
 		#bookmark that represents the file from which the panel was activated
 		currentDir = os.path.dirname(sublime.packages_path())
@@ -282,7 +243,6 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		Log(currentDir)
 
 		self._Load()
-		
 
 
 	def run(self, type):
@@ -326,18 +286,34 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 
 	def _createBookmarkPanel(self, onHighlight, onDone):
-		self.revertBookmark = None
+
+		def moveBookmarksToActiveGroup(activeGroup):
+			#move all open bookmark tabs to one group so that group switching does not
+			#occur.
+			views = window.views()
+			for bookmark in BOOKMARKS:
+				view = window.open_file(bookmark.getFilePath())
+				#if the bookmark is already open, then move it to the active
+				#group. If not, leave it alone, since it can be opened when need br.
+				if view in views:
+					moveViewToGroup(window, view, activeGroup)
 
 		window = self.window
 		#create a revert bookmark to go back if the user cancels
 		self._createRevertBookmark(window.active_view())
+
+		#move all bookmarks to the currently active group
+		self.activeGroup = self.window.active_group()
+		moveBookmarksToActiveGroup(self.activeGroup)
 
 		#create a list of acceptable bookmarks based on settings
 		bookmarkItems = createBookmarkPanelItems(window, BOOKMARKS, SHOW_ALL_BOOKMARKS)
 
 		#if no bookmarks are acceptable, don't show bookmarks
 		if len(bookmarkItems) == 0:
+			sublime.status_message("SublimeBookmarks: NO ACCEPTABLE BOOKMARKS TO GOTO. CHECK CURRENT MODE")
 			return
+
 		#create a selection panel and launch it
 		selector = OptionsSelector(window, bookmarkItems, onHighlight, onDone)
 		selector.start()
@@ -490,11 +466,23 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		if self.revertBookmark is None:
 			return
 
-		gotoBookmark(self.revertBookmark, self.window)
-		#restoreFile(self.revertBookmark, self.window)
-
+		#view = self.window.open_file(self.revertBookmark.getFilePath())
+		#moveViewToGroup(self.window, view, self.revertBookmark.getGroup())
+		#gotoBookmark(self.revertBookmark, self.window)
+		
 		self.revertBookmark = None
 		
+	
+	def _restoreFiles(self):
+		views = self.window.views()
+		for bookmark in BOOKMARKS:
+			view = self.window.open_file(bookmark.getFilePath())
+			#the bookmark is opened - reset it (move it's view back to it's group)
+			if view in views:
+				moveViewToGroup(self.window, view, bookmark.getGroup())
+
+
+
 	#callbacks---------------------------------------------------
 	def _AddBookmarkCallback(self, name):
 		window = self.window
@@ -518,9 +506,17 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 		#get region and line data
 		region = getCurrentLineRegion(view)
-		group = self.window.active_group()
+		group = self.activeGroup
 		lineStr = view.substr(region)
 		lineNumber = view.rowcol(view.sel()[0].begin())[0]
+
+
+
+		#there's no content
+		if len(lineStr.strip()) == 0:
+			Log("STRING EMPTY. NOT CREATING BOOKMARK")
+			sublime.status_message("SublimeBookmarks: BOOKMARK EMPTY. NOT CREATING BOOKMARK")
+			return
 
 		#create a bookmark and add it to the global list
 		global BOOKMARKS
@@ -546,24 +542,38 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 	#if the user canceled, go back to the original file
 	def _HilightDoneCallback(self, index):
-		#if we started from a blank window, self.revertBookmark CAN be None
+
+		#restore all files back to their original places
+		self._restoreFiles()
+
+		#if the user canceled, then goto the revert bookmark
 		if index == -1:
 			self._gotoRevertBookmark()
-		#otherwise, just goto the selected bookmark
+
+		#otherwise, goto the selected bookmark
 		else:
-			#hacky but hey...
+			#now open the selected bookmark and scroll to bookmark
 			self._AutoMoveToBookmarkCallback(index)
+
+			#move the correct bookmark back to the active group
+			bookmark = BOOKMARKS[index]
+			view = self.window.open_file(bookmark.getFilePath())
+			moveViewToGroup(self.window, view, self.activeGroup)
 
 		self._updateBufferStatus()
 
 
 	#remove the selected bookmark or go back if user cancelled
 	def _RemoveDoneCallback(self, index):
-		#if we started from a blank window, self.revertBookmark CAN be None
+		#restore all files back to their original places
+		self._restoreFiles()
+
+		#if the user canceled, then goto the revert bookmark
 		if index == -1:
 			self._gotoRevertBookmark()
-		else:
 
+		#otherwise, goto the selected bookmark
+		else:
 			global BOOKMARKS
 			global ERASED_BOOKMARKS
 
@@ -582,7 +592,6 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			del BOOKMARKS[index]
 
 		self._updateBufferStatus()
-
 		#File IO Here!--------------------
 		self._Save()
 
