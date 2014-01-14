@@ -86,6 +86,41 @@ def gotoBookmark(bookmark, window):
 	#I don't know if it's my bug or sublime text's but I have
 	#a feeling it's sublime text's bug. Will have to report
 	#this. This is a pain...
+	
+	hilightedGroup = window.active_group()
+	
+	view = window.open_file(filePath)
+		
+	#get the group and index of the view
+	(viewGroup, viewIndex) = window.get_view_index(view) 
+
+	print("-----------")
+	print ("HILIGHTED GROUP: " + str(hilightedGroup))
+	print ("VIEW GROUP: " + str(viewGroup))
+
+	#the needed view is in the highlighted (current)group,
+	#so we don't need to do anything.
+	if hilightedGroup == viewGroup:
+		print ("SAME GROUP")
+		
+	else:
+		print ("NEW GROUP")
+		#if there are 0 views, then the moved view will have index 0
+		#similarly, if there are n views, the last view will have index (n-1), and
+		#so the new view will have index n  
+		newIndex = len (window.views_in_group(hilightedGroup))
+		#move the view to the highlighted group and assign a
+		#correct index
+		window.set_view_index(view, hilightedGroup, newIndex)
+
+	view.show_at_center(bookmark.getRegion())
+	
+	return
+	#view.show_at_center(bookmark.getRegion())
+	#window.focus_group(hilightedGroup)
+	#return
+
+
 	activeGroup = window.active_group()
 	view = window.open_file(filePath)
 
