@@ -94,17 +94,12 @@ def gotoBookmark(bookmark, window):
 	#get the group and index of the view
 	(viewGroup, viewIndex) = window.get_view_index(view) 
 
-	print("-----------")
-	print ("HILIGHTED GROUP: " + str(hilightedGroup))
-	print ("VIEW GROUP: " + str(viewGroup))
-
+	
 	#the needed view is in the highlighted (current)group,
 	#so we don't need to do anything.
 	if hilightedGroup == viewGroup:
-		print ("SAME GROUP")
-		
+		pass
 	else:
-		print ("NEW GROUP")
 		#if there are 0 views, then the moved view will have index 0
 		#similarly, if there are n views, the last view will have index (n-1), and
 		#so the new view will have index n  
@@ -133,24 +128,8 @@ def gotoBookmark(bookmark, window):
 	moveRegion = sublime.Region(bookmarkRegionMid, bookmarkRegionMid)
 	view.sel().clear()
 	view.sel().add(moveRegion)
-#send the file of the bookmark back to it's original group 
-def restoreFile(bookmark, window):
-	def groupStillOpen(group):
-		return group <= window.num_groups()
 
-	activeGroup = window.active_group()
-	originalGroup =  bookmark.getGroup()
 
-	#focus the previous group still exists. If it does, focus it
-	if groupStillOpen(originalGroup):
-		#window.focus_group(bookmark.getGroup())
-		
-		#now open the file	
-		view = window.open_file(bookmark.getFilePath())
-		window.set_view_index(view, originalGroup, 0)
-	
-	#now go back to the current group
-	#window.focus_group(activeGroup)
 
 def shouldShowBookmark(bookmark, window, showAllBookmarks):
 	currentProjectPath = window.project_file_name()
@@ -487,7 +466,6 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		if self.revertBookmark is None:
 			return
 
-		#restoreFile(self.revertBookmark, self.window)
 		gotoBookmark(self.revertBookmark, self.window)
 		self.revertBookmark = None
 		
