@@ -89,8 +89,7 @@ def gotoBookmark(bookmark, window):
 	activeGroup = window.active_group()
 	view = window.open_file(filePath)
 
-	#open the view in the active group, so that the options menu also opens
-	#in the active group and not the old group
+	#open the view in the active group.
 	window.set_view_index(view, activeGroup, 0)
 	view.show_at_center(bookmark.getRegion())
 
@@ -99,7 +98,6 @@ def gotoBookmark(bookmark, window):
 	moveRegion = sublime.Region(bookmarkRegionMid, bookmarkRegionMid)
 	view.sel().clear()
 	view.sel().add(moveRegion)
-
 #send the file of the bookmark back to it's original group 
 def restoreFile(bookmark, window):
 	def groupStillOpen(group):
@@ -394,7 +392,9 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 				#load the new region to update it
 				regions = view.get_regions(str(uid))
 
-				assert len(regions) > 0
+				#the region is not loaded yet
+				if len(regions) == 0:
+					continue
 
 				#keep the new region on the *WHOLE* line, so that it covers new text also
 				newRegion = view.line(regions[0])
@@ -452,9 +452,8 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		if self.revertBookmark is None:
 			return
 
-		restoreFile(self.revertBookmark, self.window)
+		#restoreFile(self.revertBookmark, self.window)
 		gotoBookmark(self.revertBookmark, self.window)
-
 		self.revertBookmark = None
 		
 	#callbacks---------------------------------------------------
