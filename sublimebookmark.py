@@ -22,7 +22,7 @@ UID = None
 #when a file is revisited, the buffer will still be marked. This will keep track of bookmarks
 #that have been removed.
 ERASED_BOOKMARKS = []
-
+   
 #whether all bookmarks (even unrelated) should be shown
 SHOW_ALL_BOOKMARKS = True
 
@@ -63,21 +63,11 @@ class OptionsInput:
 #helper functions--------------------------------
 #Region manipulation-----------------------------
 def getCurrentLineRegion(view):
-
 	assert (len(view.sel()) > 0)
 	selectedRegion = view.sel()[0]
 	region =  view.line(selectedRegion)
 
 	return region 
-
-def markBuffer(view, bookmark):
-	uid = bookmark.getUid()
-	region  = bookmark.getRegion()
-	view.add_regions(str(uid), [region], "text.plain", "bookmark", sublime.DRAW_NO_FILL | sublime.DRAW_EMPTY_AS_OVERWRITE)
-
-def unmarkBuffer(view, bookmark):
-	uid = bookmark.getUid()
-	view.erase_regions(str(uid))
 
 #Bookmark manipulation---------------------
 def gotoBookmark(bookmark, window):
@@ -99,7 +89,8 @@ def gotoBookmark(bookmark, window):
 	activeGroup = window.active_group()
 	view = window.open_file(filePath)
 
-	#open the view in the active group.
+	#open the view in the active group, so that the options menu also opens
+	#in the active group and not the old group
 	window.set_view_index(view, activeGroup, 0)
 	view.show_at_center(bookmark.getRegion())
 
@@ -109,6 +100,24 @@ def gotoBookmark(bookmark, window):
 	view.sel().clear()
 	view.sel().add(moveRegion)
 
+#send the file of the bookmark back to it's original group 
+def restoreFile(bookmark, window):
+	def groupStillOpen(group):
+		return group <= window.num_groups()
+
+	activeGroup = window.active_group()
+	originalGroup =  bookmark.getGroup()
+
+	#focus the previous group still exists. If it does, focus it
+	if groupStillOpen(originalGroup):
+		#window.focus_group(bookmark.getGroup())
+		
+		#now open the file	
+		view = window.open_file(bookmark.getFilePath())
+		window.set_view_index(view, originalGroup, 0)
+	
+	#now go back to the current group
+	#window.focus_group(activeGroup)
 
 def shouldShowBookmark(bookmark, window, showAllBookmarks):
 	currentProjectPath = window.project_file_name()
@@ -168,10 +177,12 @@ def showMessage(statusMessage):
 
 #Bookmark-----------
 class Bookmark:
-	def __init__(self, uid, name, filePath, projectPath, region, lineNumber, lineStr):
+	def __init__(self, uid, name, filePath, projectPath, region, group, lineNumber, lineStr):
 		self.uid = int(uid)
 		self.name = str(name)
-		self.region = region
+		self.regionA = int(region.a)
+		self.regionB = int(region.b)
+		self.group = int(group)
 		self.filePath = str(filePath)
 		self.projectPath = str(projectPath)
 		self.lineStr = str(lineStr)
@@ -184,7 +195,7 @@ class Bookmark:
 		return self.uid
 
 	def getRegion(self):
-		return self.region
+		return sublime.Region(self.regionA, self.regionB)
 
 	def getFilePath(self):
 		return self.filePath
@@ -198,29 +209,37 @@ class Bookmark:
 	def getLineStr(self):
 		return self.lineStr
 
-	
+	def getGroup(self):
+		return self.group
+
+
 
 	def setLineStr(self, newLineStr):
-		self.lineStr = newLineStr
+		self.lineStr = str(newLineStr)
 
 	def setRegion(self, region):
-		self.region = region
+		self.regionA = region.a
+		self.regionB = region.b
+
+	def setGroup(self, group):
+		self.group = int(group)
+
+
 
 class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 	def __init__(self, window):
 		global BOOKMARKS
 		global UID 
 
-		self.window = window
-		self.revertBookmark = None
-		#the region to revert to
-		self.revertBookmarkGroup = None
-
-		BOOKMARKS = []
-		
+		BOOKMARKS = []		
 		#initialize to 0
 		UID = 0
 
+		self.window = window
+
+		#the bookmark to go to if the user cancels
+		self.revertBookmark = None
+		
 		#bookmark that represents the file from which the panel was activated
 		currentDir = os.path.dirname(sublime.packages_path())
 		self.SAVE_PATH = currentDir + '/sublimeBookmarks.pickle'
@@ -237,19 +256,27 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			self._addBookmark()
 
 		elif type == "goto":
-			self._gotoBookmark()
+			#on highlighting, goto the current bookmark
+			#on option select, just center the selected item
+			self._createBookmarkPanel(self._HilightDoneCallback, self._AutoMoveToBookmarkCallback)
 
 		elif type == "remove":
-			self._removeBookmark()
+			#on highlighting, goto the current bookmark
+			#on option select, remove the selected item
+			self._createBookmarkPanel(self._RemoveDoneCallback, self._AutoMoveToBookmarkCallback)
 
 		elif type == "show_all_bookmarks":
 			SHOW_ALL_BOOKMARKS = True
 			self._Save()
+
+			#update buffer to show all bookmarks
 			self._updateBufferStatus()
 
 		elif type == "show_project_bookmarks":
 			SHOW_ALL_BOOKMARKS = False
 			self._Save()
+
+			#update buffer to show only project bookmarks
 			self._updateBufferStatus()
 
 		elif type == "remove_all":
@@ -262,6 +289,22 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			self._UpdateBookmarkPosition();
 
 
+	def _createBookmarkPanel(self, onHighlight, onDone):
+		self.revertBookmark = None
+
+		window = self.window
+		#create a revert bookmark to go back if the user cancels
+		self._createRevertBookmark(window.active_view())
+
+		#create a list of acceptable bookmarks based on settings
+		bookmarkItems = createBookmarkPanelItems(window, BOOKMARKS, SHOW_ALL_BOOKMARKS)
+
+		#if no bookmarks are acceptable, don't show bookmarks
+		if len(bookmarkItems) == 0:
+			return
+		#create a selection panel and launch it
+		selector = OptionsSelector(window, bookmarkItems, onHighlight, onDone)
+		selector.start()
 
 	#event handlers----------------------------
 	def _addBookmark(self):
@@ -277,40 +320,6 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		input = OptionsInput(self.window, "Add Bookmark", initialText, self._AddBookmarkCallback, None)
 		input.start()
 
-	def _gotoBookmark(self):
-		window = self.window
-		#create a revert bookmark to go back if the user cancels
-		self.revertBookmark = self._createRevertBookmark(window.active_view())
-
-		#create a list of acceptable bookmarks based on settings
-		bookmarkItems = createBookmarkPanelItems(window, BOOKMARKS, SHOW_ALL_BOOKMARKS)
-
-		#if no bookmarks are acceptable, don't show bookmarks
-		if len(bookmarkItems) == 0:
-			return
-		#create a selection panel and launch it
-		selector = OptionsSelector(window, bookmarkItems, self._HilightDoneCallback, self._AutoMoveToBookmarkCallback)
-		selector.start()
-
-
-	def _removeBookmark(self):
-		window = self.window
-
-		#create a revert bookmark to go back if the user cancels
-		self.revertBookmark = self._createRevertBookmark(window.active_view())
-		
-		#create a list of acceptable bookmarks based on settings
-		bookmarkItems = createBookmarkPanelItems(window, BOOKMARKS, SHOW_ALL_BOOKMARKS)
-
-		#if no bookmarks are acceptable, don't show bookmarks
-		if len(bookmarkItems) == 0:
-			return
-
-		#create a selection panel and launch it
-		selector = OptionsSelector(window, bookmarkItems, self._RemoveDoneCallback, self._AutoMoveToBookmarkCallback)
-		selector.start()
-
-
 	def _removeAllBookmarks(self):
 		window = self.window
 		view = window.active_view()
@@ -322,25 +331,40 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		for bookmark in BOOKMARKS:
 			#store erased bookmarks for delayed removal
 			ERASED_BOOKMARKS.append(deepcopy(bookmark))
-			#unmark all bookmarks that are currently visible for immediate feedback
-			if bookmark.getFilePath() == filePath:
-				unmarkBuffer(view, bookmark)
-
+			
 		#yep. nuke em
 		del BOOKMARKS
 		BOOKMARKS = []	
 
+		#update the buffer since we deleted a bookmark
+		self._updateBufferStatus()
 		#save to eternal storage
 		self._Save()
 
 	def _updateBufferStatus(self):
+		#marks the given bookmark on the buffer
+		def markBuffer(view, bookmark):
+			uid = bookmark.getUid()
+			region  = bookmark.getRegion()
+			view.add_regions(str(uid), [region], "text.plain", "bookmark", sublime.DRAW_NO_FILL | sublime.DRAW_EMPTY_AS_OVERWRITE)
+
+		#unmarks the given bookmark on the buffer
+		def unmarkBuffer(view, bookmark):
+			uid = bookmark.getUid()
+			view.erase_regions(str(uid))
+
 		Log ("MARKING BUFFER")
 
 		window = self.window
 		view = window.active_view()
+
+		#this can happen if it's a temporary file
+		if view is None:
+			return
+
 		filePath = view.file_name()
 		
-		#mark all bookmarks that are visible
+		#mark all bookmarks that are visible, and unmark invisible bookmarks
 		for bookmark in BOOKMARKS:
 			shouldShow = shouldShowBookmark(bookmark, window, SHOW_ALL_BOOKMARKS)
 
@@ -354,6 +378,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			if bookmark.getFilePath() == filePath:
 				unmarkBuffer(view, bookmark)
 
+	#move bookmarks and update their regions when text is entered into the buffer
 	def _UpdateBookmarkPosition(self):
 		window = self.window
 		view = window.active_view()
@@ -362,57 +387,85 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		global BOOKMARKS
 
 		for bookmark in BOOKMARKS:
-			#this bookmark (might) have been changed. We're on a thread anyway so update it.
+			#this bookmark (might) have been changed since it's in the current file
+			#We're on a thread anyway so update it.
 			if bookmark.getFilePath() == filePath:
 				uid = bookmark.getUid()
-				#load the new region and set the bookmark's region again
+				#load the new region to update it
 				regions = view.get_regions(str(uid))
 
-				#there is no region in the view
-				if len(regions) == 0:
-					return
+				assert len(regions) > 0
 
-				#keep the new region on the *WHOLE* line
+				#keep the new region on the *WHOLE* line, so that it covers new text also
 				newRegion = view.line(regions[0])
 				newLineStr = view.substr(newRegion) 
-
+				newGroup = self.window.get_view_index(view)[0]
+				
 				assert newRegion is not None
+				bookmark.setGroup(newGroup)
 				bookmark.setRegion(newRegion)
 				bookmark.setLineStr(newLineStr)
 
-				#re-mark the buffer. This automagically clears the previous mark
-				markBuffer(view, bookmark)
+			
+				#if region is empty, delete bookmark 
+				#(since there is nothing in the bookmarked line)
+				if len (newLineStr.strip()) == 0:
+					Log("BOOKMARK IS EMPTY. REMOVING")
+					global ERASED_BOOKMARKS
+
+					ERASED_BOOKMARKS.append(deepcopy(bookmark))
+					BOOKMARKS.remove(bookmark)
+					self._Save()
+
+		#we've moved regions around so update the buffer
+		self._updateBufferStatus()
 					
 	#helpers-------------------------------------------
-	#creates a bookmark that keeps track of where we were. 
+	#creates a bookmark that keeps track of where we were before opening
+	#an options menu. 
 	def _createRevertBookmark(self, activeView):
 		#there's no file open. return None 'cause there's no place to return TO
 		if activeView is None:
+			self.revertBookmark = None
+			return
+
+		filePath = activeView.file_name()
+		#there is no file to go back to
+		if filePath is None:
 			return None
 
-		name = ""
-		filePath = activeView.file_name()
-		projectPath = ""
-		uID = REGION_BASE_TAG * (-1)
 
 		region = getCurrentLineRegion(activeView)
-		lineStr = ""
-		lineNumber = activeView.rowcol(activeView.sel()[0].begin())[0]
+		group = self.window.active_group()
 
-		self.revertBookmarkGroup = activeView.window().active_group()
-		return Bookmark(uID, name, filePath, projectPath, region, lineNumber, lineStr)
+		uid = (-1) * REGION_BASE_TAG #does not matter
+		name = "" #does not matter
+		filePath = activeView.file_name()
+		projectPath = "" #does not matter
+		lineNumber = -1 #does not matter
+		lineStr = "" #does not matter
 
-	def _gotoRevertBookmar(self, revertBookmark):
+		self.revertBookmark = Bookmark(uid, name, filePath, projectPath, region, group, lineNumber, lineStr)
+
+	#goes to the revert bookmark
+	def _gotoRevertBookmark(self):
+		if self.revertBookmark is None:
+			return
+
+		restoreFile(self.revertBookmark, self.window)
 		gotoBookmark(self.revertBookmark, self.window)
+
 		self.revertBookmark = None
 		
 	#callbacks---------------------------------------------------
 	def _AddBookmarkCallback(self, name):
-
-
 		window = self.window
 		view = window.active_view()
 		filePath = view.file_name()
+
+		#if the view is a temporary view, it can be none
+		if view is None:
+			return
 
 		#figure out the project path
 		projectPath = window.project_file_name()
@@ -427,17 +480,17 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 		#get region and line data
 		region = getCurrentLineRegion(view)
+		group = self.window.active_group()
 		lineStr = view.substr(region)
 		lineNumber = view.rowcol(view.sel()[0].begin())[0]
 
 		#create a bookmark and add it to the global list
 		global BOOKMARKS
 
-		bookmark = Bookmark(myUID, name, filePath, projectPath, region, lineNumber, lineStr)
+		bookmark = Bookmark(myUID, name, filePath, projectPath, region, group, lineNumber, lineStr)
 		BOOKMARKS.append(bookmark)
 
-		markBuffer(view, bookmark)
-		
+		self._updateBufferStatus()
 		#File IO Here!--------------------
 		self._Save()
 
@@ -451,22 +504,26 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		gotoBookmark(bookmark, self.window)
 		self._updateBufferStatus()
 	
-	#if the user cancelled, go back to the original file
+
+
+	#if the user canceled, go back to the original file
 	def _HilightDoneCallback(self, index):
 		#if we started from a blank window, self.revertBookmark CAN be None
-		if index == -1 and self.revertBookmark is not None:
-			gotoBookmark(self.revertBookmark, self.window)
-			
-		self.revertBookmark = None
+		if index == -1:
+			self._gotoRevertBookmark()
+		#otherwise, just goto the selected bookmark
+		else:
+			#hacky but hey...
+			self._AutoMoveToBookmarkCallback(index)
+
 		self._updateBufferStatus()
 
 
 	#remove the selected bookmark or go back if user cancelled
 	def _RemoveDoneCallback(self, index):
 		#if we started from a blank window, self.revertBookmark CAN be None
-		if index == -1 and self.revertBookmark is not None:
-			gotoBookmark(self.revertBookmark, self.window)
-			return
+		if index == -1:
+			self._gotoRevertBookmark()
 		else:
 
 			global BOOKMARKS
@@ -479,14 +536,13 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			bookmark = BOOKMARKS[index]
 			assert bookmark is not None
 
+			#goto the removed bookmark
 			gotoBookmark(bookmark, window)
-			unmarkBuffer(window.active_view(), bookmark)
-			
+
 			#add to list of erased bookmarks
 			ERASED_BOOKMARKS.append(deepcopy(bookmark))
 			del BOOKMARKS[index]
 
-		self.revertBookmark = None
 		self._updateBufferStatus()
 
 		#File IO Here!--------------------
