@@ -70,6 +70,26 @@ def getCurrentLineRegion(view):
 	return region 
 
 #Bookmark manipulation---------------------
+
+def moveViewToGroup(window, view, group):
+	(viewGroup, viewIndex) = window.get_view_index(view) 
+
+	#the view is in the required group,
+	#so we don't need to do anything.
+	if group == viewGroup:
+		pass
+	#we have to move the view to the other group and give it a new index
+	else:
+		print("DIFFERENT")
+		#if there are 0 views, then the moved view will have index 0
+		#similarly, if there are n views, the last view will have index (n-1), and
+		#so the new view will have index n  
+		newIndex = len (window.views_in_group(group))
+		#move the view to the highlighted group and assign a
+		#correct index
+		window.set_view_index(view, group, newIndex)
+
+
 def gotoBookmark(bookmark, window):
 	filePath = bookmark.getFilePath()
 	lineNumber = bookmark.getLineNumber()
@@ -86,49 +106,27 @@ def gotoBookmark(bookmark, window):
 	#I don't know if it's my bug or sublime text's but I have
 	#a feeling it's sublime text's bug. Will have to report
 	#this. This is a pain...
-	
-	hilightedGroup = window.active_group()
-	
-	view = window.open_file(filePath)
-		
-	#get the group and index of the view
-	(viewGroup, viewIndex) = window.get_view_index(view) 
 
-	
-	#the needed view is in the highlighted (current)group,
-	#so we don't need to do anything.
-	if hilightedGroup == viewGroup:
-		pass
-	else:
-		#if there are 0 views, then the moved view will have index 0
-		#similarly, if there are n views, the last view will have index (n-1), and
-		#so the new view will have index n  
-		newIndex = len (window.views_in_group(hilightedGroup))
-		#move the view to the highlighted group and assign a
-		#correct index
-		window.set_view_index(view, hilightedGroup, newIndex)
-
-	view.show_at_center(bookmark.getRegion())
-	
-	return
-	#view.show_at_center(bookmark.getRegion())
-	#window.focus_group(hilightedGroup)
-	#return
-
-
+	#this line's order is important. This needs to be done first
+	#since opening a file will cause the active group to change
 	activeGroup = window.active_group()
+	
+
 	view = window.open_file(filePath)
+	#move the view to the currently active group
+	moveViewToGroup(window, view, activeGroup)
 
-	#open the view in the active group.
-	window.set_view_index(view, activeGroup, 0)
+	#focus on the active group to avoid the panel problem as described
+	window.focus_group(activeGroup)	
+	window.focus_view(view)
+	#show bookmark :)
 	view.show_at_center(bookmark.getRegion())
-
+		
 	#move cursor to the middle of the bookmark's region
 	bookmarkRegionMid = 0.5 * (bookmark.getRegion().begin() +  bookmark.getRegion().end())
 	moveRegion = sublime.Region(bookmarkRegionMid, bookmarkRegionMid)
 	view.sel().clear()
 	view.sel().add(moveRegion)
-
 
 
 def shouldShowBookmark(bookmark, window, showAllBookmarks):
