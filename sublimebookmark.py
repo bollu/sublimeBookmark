@@ -22,9 +22,20 @@ UID = None
 #when a file is revisited, the buffer will still be marked. This will keep track of bookmarks
 #that have been removed.
 ERASED_BOOKMARKS = []
-   
+  
+
+
 #whether all bookmarks (even unrelated) should be shown
-SHOW_ALL_BOOKMARKS = True
+def SHOW_ALL_BOOKMARKS():
+	return "Show All Bookmarks"
+
+def SHOW_ONLY_PROJECT_BOOKMARKS():
+	return "Show Only Project Bookmarks"
+
+def SHOW_ONLY_FILE_BOOKMARKS():
+	return "Show Only File Bookmarks"
+
+BOOKMARKS_MODE = SHOW_ALL_BOOKMARKS()
 
 class OptionsSelector:
 	def __init__(self, window, panelItems, onDone, onHighlight):
@@ -115,19 +126,32 @@ def gotoBookmark(bookmark, window):
 	view.sel().add(moveRegion)
 
 
-def shouldShowBookmark(bookmark, window, showAllBookmarks):
-	currentProjectPath = window.project_file_name()
-	
+def shouldShowBookmark(bookmark, window, bookmarkMode):
+	#1)there is no current project now. Show all bookmarks
+	#2)current project matches bookmark path
+	def isValidProject(currentProjectPath, bookmarkProjectPath):
+		return currentProjectPath ==  NO_PROJECT or currentProjectPath == bookmarkProjectPath
+
+	currentFilePath = window.active_view().file_name()
+	currentProjectPath = window.project_file_name() 
+
 	#free bookmarks can be shown. We don't need a criteria
-	if showAllBookmarks:
+	if bookmarkMode == SHOW_ALL_BOOKMARKS():
 		return True
-	#there is no current project now. Show all bookmarks
-	elif currentProjectPath == None or currentProjectPath == "":
+	
+
+	elif bookmarkMode == SHOW_ONLY_PROJECT_BOOKMARKS() and \
+			isValidProject(currentProjectPath, bookmark.gerProjectPath()):
 		return True
 
-	#return if the bookmark belongs to current project or not.
+	elif bookmarkMode == SHOW_ONLY_FILE_BOOKMARKS() and \
+			bookmark.getFilePath() == currentFilePath:
+			return True
 	else:
-		return bookmark.getProjectPath() == currentProjectPath
+		assert("Unknown Mode")
+		return False
+
+	return False
 
 
 #Menu generation-----------------------------------
@@ -246,7 +270,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 
 	def run(self, type):
-		global SHOW_ALL_BOOKMARKS
+		global BOOKMARKS_MODE
 
 		if type == "add":
 			self._addBookmark()
@@ -262,16 +286,20 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			self._createBookmarkPanel(self._RemoveDoneCallback, self._AutoMoveToBookmarkCallback)
 
 		elif type == "show_all_bookmarks":
-			SHOW_ALL_BOOKMARKS = True
+			BOOKMARKS_MODE = SHOW_ALL_BOOKMARKS()
 			self._Save()
-
 			#update buffer to show all bookmarks
 			self._updateBufferStatus()
 
 		elif type == "show_project_bookmarks":
-			SHOW_ALL_BOOKMARKS = False
+			BOOKMARKS_MODE = SHOW_ONLY_PROJECT_BOOKMARKS()
 			self._Save()
+			#update buffer to show only project bookmarks
+			self._updateBufferStatus()
 
+		elif type == "show_file_bookmarks":
+			BOOKMARKS_MODE = SHOW_ONLY_FILE_BOOKMARKS()
+			self._Save()
 			#update buffer to show only project bookmarks
 			self._updateBufferStatus()
 
@@ -302,17 +330,18 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		#create a revert bookmark to go back if the user cancels
 		self._createRevertBookmark(window.active_view())
 
-		#move all bookmarks to the currently active group
-		self.activeGroup = self.window.active_group()
-		moveBookmarksToActiveGroup(self.activeGroup)
-
 		#create a list of acceptable bookmarks based on settings
-		bookmarkItems = createBookmarkPanelItems(window, BOOKMARKS, SHOW_ALL_BOOKMARKS)
+		bookmarkItems = createBookmarkPanelItems(window, BOOKMARKS, BOOKMARKS_MODE)
 
 		#if no bookmarks are acceptable, don't show bookmarks
 		if len(bookmarkItems) == 0:
 			sublime.status_message("SublimeBookmarks: NO ACCEPTABLE BOOKMARKS TO GOTO. CHECK CURRENT MODE")
 			return
+
+		#move all bookmarks to the currently active group
+		self.activeGroup = self.window.active_group()
+		moveBookmarksToActiveGroup(self.activeGroup)
+
 
 		#create a selection panel and launch it
 		selector = OptionsSelector(window, bookmarkItems, onHighlight, onDone)
@@ -378,7 +407,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		
 		#mark all bookmarks that are visible, and unmark invisible bookmarks
 		for bookmark in BOOKMARKS:
-			shouldShow = shouldShowBookmark(bookmark, window, SHOW_ALL_BOOKMARKS)
+			shouldShow = shouldShowBookmark(bookmark, window, BOOKMARKS_MODE)
 
 			if bookmark.getFilePath() == filePath and shouldShow:
 				markBuffer(view, bookmark)
@@ -468,7 +497,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 		#view = self.window.open_file(self.revertBookmark.getFilePath())
 		#moveViewToGroup(self.window, view, self.revertBookmark.getGroup())
-		#gotoBookmark(self.revertBookmark, self.window)
+		gotoBookmark(self.revertBookmark, self.window)
 		
 		self.revertBookmark = None
 		
@@ -599,14 +628,14 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 	#Save-Load----------------------------------------------------------------
 	def _Load(self):
 		global BOOKMARKS
-		global SHOW_ALL_BOOKMARKS
+		global BOOKMARKS_MODE
 		global UID
 
 		Log("LOADING BOOKMARKS")
 		try:
 			savefile = open(self.SAVE_PATH, "rb")
 
-			SHOW_ALL_BOOKMARKS = load(savefile)
+			BOOKMARKS_MODE = load(savefile)
 			UID = load(savefile)
 			BOOKMARKS = load(savefile)
 	
@@ -620,7 +649,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		
 	def _Save(self):
 		global BOOKMARKS
-		global SHOW_ALL_BOOKMARKS
+		global BOOKMARKS_MODE
 		global UID
 
 		Log("SAVING BOOKMARKS")
@@ -628,7 +657,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		try:
 			savefile = open(self.SAVE_PATH, "wb")
 
-			dump(SHOW_ALL_BOOKMARKS, savefile)
+			dump(BOOKMARKS_MODE, savefile)
 			dump(UID, savefile)
 			dump(BOOKMARKS, savefile)
 
