@@ -40,15 +40,12 @@ BOOKMARKS_MODE = SHOW_ALL_BOOKMARKS()
 class OptionsSelector:
 	def __init__(self, window, panelItems, onDone, onHighlight):
 		self.window = window
-		self.panelItems = panelItems
+		self.panelItems = deepcopy(panelItems)
 		self.onDone = onDone
 		self.onHighlight = onHighlight
-
 		
 	def start(self):
-		view = self.window.active_view()
 		startIndex = 0
-		
 		self.window.show_quick_panel(self.panelItems, self.onDone, 0, startIndex, self.onHighlight)
 
 class OptionsInput:
@@ -126,13 +123,13 @@ def gotoBookmark(bookmark, window):
 	view.sel().add(moveRegion)
 
 
-def shouldShowBookmark(bookmark, window, bookmarkMode):
+def shouldShowBookmark(window, activeView, bookmark, bookmarkMode):
 	#1)there is no current project now. Show all bookmarks
 	#2)current project matches bookmark path
 	def isValidProject(currentProjectPath, bookmarkProjectPath):
 		return currentProjectPath ==  NO_PROJECT or currentProjectPath == bookmarkProjectPath
 
-	currentFilePath = window.active_view().file_name()
+	currentFilePath = activeView.file_name()
 	currentProjectPath = window.project_file_name() 
 
 	#free bookmarks can be shown. We don't need a criteria
@@ -141,7 +138,7 @@ def shouldShowBookmark(bookmark, window, bookmarkMode):
 	
 
 	elif bookmarkMode == SHOW_ONLY_PROJECT_BOOKMARKS() and \
-			isValidProject(currentProjectPath, bookmark.gerProjectPath()):
+			isValidProject(currentProjectPath, bookmark.getProjectPath()):
 		return True
 
 	elif bookmarkMode == SHOW_ONLY_FILE_BOOKMARKS() and \
@@ -156,7 +153,7 @@ def shouldShowBookmark(bookmark, window, bookmarkMode):
 
 #Menu generation-----------------------------------
 
-def createBookmarkPanelItems(window, bookmarks, shouldShowAllBookmarks):	
+def createBookmarkPanelItems(window, activeView, bookmarks, bookmarkMode):	
 	def ellipsisStringEnd(string, length):
 		#I have NO idea why the hell this would happen. But it's happening.
 		if string is None:
@@ -175,7 +172,7 @@ def createBookmarkPanelItems(window, bookmarks, shouldShowAllBookmarks):
 	bookmarkItems = []
 	
 	for bookmark in bookmarks:
-		if shouldShowBookmark(bookmark, window, shouldShowAllBookmarks):
+		if shouldShowBookmark(window, activeView, bookmark, bookmarkMode):
 
 			bookmarkName = bookmark.getName()
 
@@ -259,7 +256,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 		#the bookmark to go to if the user cancels
 		self.revertBookmark = None
-		self.activeGroup = 0 
+		self.activeGroup = 0
 		
 		#bookmark that represents the file from which the panel was activated
 		currentDir = os.path.dirname(sublime.packages_path())
@@ -315,7 +312,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 	def _createBookmarkPanel(self, onHighlight, onDone):
 
-		def moveBookmarksToActiveGroup(activeGroup):
+		def moveBookmarksToActiveGroup(activeGroup):	
 			#move all open bookmark tabs to one group so that group switching does not
 			#occur.
 			views = window.views()
@@ -326,26 +323,31 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 				if view in views:
 					moveViewToGroup(window, view, activeGroup)
 
+
 		window = self.window
-		#create a revert bookmark to go back if the user cancels
-		self._createRevertBookmark(window.active_view())
+		activeView = window.active_view()
+		self.activeGroup = self.window.active_group()
 
 		#create a list of acceptable bookmarks based on settings
-		bookmarkItems = createBookmarkPanelItems(window, BOOKMARKS, BOOKMARKS_MODE)
+		bookmarkItems = createBookmarkPanelItems(window, activeView, BOOKMARKS, BOOKMARKS_MODE)
 
 		#if no bookmarks are acceptable, don't show bookmarks
 		if len(bookmarkItems) == 0:
 			sublime.status_message("SublimeBookmarks: NO ACCEPTABLE BOOKMARKS TO GOTO. CHECK CURRENT MODE")
 			return
 
-		#move all bookmarks to the currently active group
-		self.activeGroup = self.window.active_group()
-		moveBookmarksToActiveGroup(self.activeGroup)
+		#create a revert bookmark to go back if the user cancels
+		self._createRevertBookmark(activeView)
 
+		#move all active bookmarks to the currently active group
+		moveBookmarksToActiveGroup(self.activeGroup)
 
 		#create a selection panel and launch it
 		selector = OptionsSelector(window, bookmarkItems, onHighlight, onDone)
 		selector.start()
+
+		for bookmark in bookmarkItems:
+			print (bookmark[2])
 
 	#event handlers----------------------------
 	def _addBookmark(self):
@@ -407,9 +409,12 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		
 		#mark all bookmarks that are visible, and unmark invisible bookmarks
 		for bookmark in BOOKMARKS:
-			shouldShow = shouldShowBookmark(bookmark, window, BOOKMARKS_MODE)
-
-			if bookmark.getFilePath() == filePath and shouldShow:
+			shouldShow = shouldShowBookmark(window, view, bookmark, BOOKMARKS_MODE)
+			#only mark if we are in the right file. Otherwise, all bookmarks will get
+			#marked across all files
+			validContext = bookmark.getFilePath() == filePath
+			
+			if validContext and shouldShow:
 				markBuffer(view, bookmark)
 			else:
 				unmarkBuffer(view, bookmark)
