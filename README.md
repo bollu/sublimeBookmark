@@ -63,25 +63,34 @@ To remove _all_ bookmarks, select the option ```SublimeBookmarks:Remove All Book
 
 
 
-##Projects:##
+##Visibility Modes:##
 
-SublimeBookmarks tries to be smart and by default, only shows bookmarks that belong to the current project. So, if a bookmark is created when you are in a certain project, this bookmark will be visible __only when you are viewing that particular project__.
+SublimeBookmarks has 3 visibility modes associated with it:
 
 
-###Viewing all Bookmarks###
+###1) View all Bookmarks###
 
-To view all bookmarks - not just bookmarks that belong to the project you are working on:
+ This mode shows *all* bookmarks that have been created - irrespective of project or file information.
 
- Press ```ctrl + shift + P```  on Windows / Linux or ```cmd + shift + P``` on Mac and select ```SublimeBookmarks:Show All Bookmarks```
+
+ To use this mode, Press ```ctrl + shift + P```  on Windows / Linux or ```cmd + shift + P``` on Mac and select ```SublimeBookmarks:Show All Bookmarks```
 
  This will show __all__ bookmarks created
 
 
-###Viewing only Project Bookmarks###
+###2) View only Project Bookmarks###
 
-To view bookmarks that only belong to the current project:
+ This mode only shows bookmarksthat belong to the *current project* - it will not show other bookmarks *at all*
 
- Press ```ctrl + shift + P```  on Windows / Linux or ```cmd + shift + P``` on Mac and select ```SublimeBookmarks:Show Only Project Bookmarks```
+ Press ```ctrl + shift + P```  on Windows / Linux or ```cmd + shift + P``` on Mac and select ```SublimeBookmarks:Show Only Bookmarks In Current Project```
+
+This will only show bookmarks that belong to the current project.
+
+###2) View only current file Bookmarks###
+
+ This mode only shows bookmark that are present in the *current file*.
+
+ Press ```ctrl + shift + P```  on Windows / Linux or ```cmd + shift + P``` on Mac and select ```SublimeBookmarks:Show Only Bookmarks In Current File```
 
 This will only show bookmarks that belong to the current project.
 
