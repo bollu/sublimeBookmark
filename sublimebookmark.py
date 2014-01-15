@@ -9,7 +9,7 @@ def Log(string):
 	if False:
 		print (string)
 
-REGION_BASE_TAG = int(11001001000011111101)
+REGION_BASE_TAG = int(10242)
 SETTINGS_NAME = "SublimeBookmarks.sublime-settings"
 #if someone names their project this, we're boned
 NO_PROJECT = "___NO_PROJECT_PRESENT____"
@@ -180,8 +180,8 @@ def createBookmarkPanelItems(window, activeView, filteredBookmarks):
 			bookmarkName = bookmark.getName()
 
 			lineStrRaw = bookmark.getLineStr()
-			bookmarkLine = ellipsisStringEnd(lineStrRaw.strip(), len(bookmarkName) * 2)
 
+			bookmarkLine = ellipsisStringEnd(lineStrRaw.strip(), 55)
 			bookmarkFile = ellipsisStringBegin(bookmark.getFilePath(), 55)
 
 			bookmarkItems.append( [bookmarkName, bookmarkLine, bookmarkFile] )
@@ -466,11 +466,12 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 					ERASED_BOOKMARKS.append(deepcopy(bookmark))
 					BOOKMARKS.remove(bookmark)
-					self._Save()
-
+					
 		#we've moved regions around so update the buffer
 		self._updateBufferStatus()
-					
+		#we've moved bookmarks around and may also have deleted them. So, save
+		self._Save()
+	
 	#helpers-------------------------------------------
 	#creates a bookmark that keeps track of where we were before opening
 	#an options menu. 
@@ -626,7 +627,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 			#add to list of erased bookmarks
 			ERASED_BOOKMARKS.append(deepcopy(bookmark))
-			del BOOKMARKS[index]
+			BOOKMARKS.remove(bookmark)
 
 		self._updateBufferStatus()
 		#File IO Here!--------------------
