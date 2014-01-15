@@ -9,7 +9,7 @@ def Log(string):
 	if False:
 		print (string)
 
-REGION_BASE_TAG = int(10242)
+REGION_BASE_TAG = int(11001001000011111101)
 SETTINGS_NAME = "SublimeBookmarks.sublime-settings"
 #if someone names their project this, we're boned
 NO_PROJECT = "___NO_PROJECT_PRESENT____"
