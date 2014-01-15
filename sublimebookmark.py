@@ -65,7 +65,6 @@ class OptionsInput:
 		#is overwritten
 		assert (len(inputPanelView.sel()) > 0)
 		selectionRegion = inputPanelView.full_line(inputPanelView.sel()[0])
-		print ("DATA: " + inputPanelView.substr(selectionRegion))
 		inputPanelView.sel().add(selectionRegion)
 	
 #helper functions--------------------------------
@@ -152,8 +151,15 @@ def shouldShowBookmark(window, activeView, bookmark, bookmarkMode):
 
 
 #Menu generation-----------------------------------
+def filterBookmarks(bookmarks, window, activeView, bookmarkMode):
+	filteredBookmarks = []
+	for bookmark in bookmarks:
+		if shouldShowBookmark(window, activeView, bookmark, bookmarkMode):
+			filteredBookmarks.append(bookmark)
 
-def createBookmarkPanelItems(window, activeView, bookmarks, bookmarkMode):	
+	return filteredBookmarks
+
+def createBookmarkPanelItems(window, activeView, filteredBookmarks):	
 	def ellipsisStringEnd(string, length):
 		#I have NO idea why the hell this would happen. But it's happening.
 		if string is None:
@@ -170,20 +176,16 @@ def createBookmarkPanelItems(window, activeView, bookmarks, bookmarkMode):
 
 
 	bookmarkItems = []
-	
-	for bookmark in bookmarks:
-		if shouldShowBookmark(window, activeView, bookmark, bookmarkMode):
-
+	for bookmark in filteredBookmarks:
 			bookmarkName = bookmark.getName()
 
 			lineStrRaw = bookmark.getLineStr()
-			bookmarkLine = ellipsisStringEnd(lineStrRaw.strip(), 55)
+			bookmarkLine = ellipsisStringEnd(lineStrRaw.strip(), len(bookmarkName) * 2)
 
 			bookmarkFile = ellipsisStringBegin(bookmark.getFilePath(), 55)
 
 			bookmarkItems.append( [bookmarkName, bookmarkLine, bookmarkFile] )
-		else:
-			continue
+		
 
 	return bookmarkItems
 
@@ -258,6 +260,9 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		self.revertBookmark = None
 		self.activeGroup = 0
 		
+		#bookmarks that are being shown in the panel
+		self.displayedBookmarks = None
+
 		#bookmark that represents the file from which the panel was activated
 		currentDir = os.path.dirname(sublime.packages_path())
 		self.SAVE_PATH = currentDir + '/sublimeBookmarks.pickle'
@@ -329,10 +334,11 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		self.activeGroup = self.window.active_group()
 
 		#create a list of acceptable bookmarks based on settings
-		bookmarkItems = createBookmarkPanelItems(window, activeView, BOOKMARKS, BOOKMARKS_MODE)
+		self.displayedBookmarks = filterBookmarks(BOOKMARKS, window, activeView, BOOKMARKS_MODE)
+		bookmarkPanelItems = createBookmarkPanelItems(window, activeView, self.displayedBookmarks)
 
 		#if no bookmarks are acceptable, don't show bookmarks
-		if len(bookmarkItems) == 0:
+		if len(self.displayedBookmarks) == 0:
 			sublime.status_message("SublimeBookmarks: NO ACCEPTABLE BOOKMARKS TO GOTO. CHECK CURRENT MODE")
 			return
 
@@ -343,11 +349,8 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		moveBookmarksToActiveGroup(self.activeGroup)
 
 		#create a selection panel and launch it
-		selector = OptionsSelector(window, bookmarkItems, onHighlight, onDone)
+		selector = OptionsSelector(window, bookmarkPanelItems, onHighlight, onDone)
 		selector.start()
-
-		for bookmark in bookmarkItems:
-			print (bookmark[2])
 
 	#event handlers----------------------------
 	def _addBookmark(self):
@@ -564,8 +567,8 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 	#display highlighted bookmark
 	def _AutoMoveToBookmarkCallback(self, index):
-		assert index < len(BOOKMARKS)
-		bookmark = BOOKMARKS[index]
+		assert index < len(self.displayedBookmarks)
+		bookmark = self.displayedBookmarks[index]
 		assert bookmark is not None
 
 		#goto highlighted bookmark
@@ -590,7 +593,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			self._AutoMoveToBookmarkCallback(index)
 
 			#move the correct bookmark back to the active group
-			bookmark = BOOKMARKS[index]
+			bookmark = self.displayedBookmarks[index]
 			view = self.window.open_file(bookmark.getFilePath())
 			moveViewToGroup(self.window, view, self.activeGroup)
 
@@ -611,11 +614,11 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			global BOOKMARKS
 			global ERASED_BOOKMARKS
 
-			assert index < len(BOOKMARKS)
+			assert index < len(self.displayedBookmarks)
 
 			#remove the mark from the bookmark
 			window = self.window
-			bookmark = BOOKMARKS[index]
+			bookmark = self.displayedBookmarks[index]
 			assert bookmark is not None
 
 			#goto the removed bookmark
