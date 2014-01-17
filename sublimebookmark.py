@@ -6,7 +6,7 @@ from pickle import dump, load, UnpicklingError, PicklingError
 from copy import deepcopy
 
 def Log(string):
-	if False:
+	if True:
 		print (string)
 
 
@@ -114,6 +114,24 @@ def gotoBookmark(bookmark, window):
 	lineNumber = bookmark.getLineNumber()
 
 	view = window.open_file(filePath)
+
+	# if bookmark.isScratchBuffer():
+		
+	# 	for view_ in window.views():
+	# 		if view_.buffer_id() == bookmark.getBufferID():
+	# 			view = view_
+	# 			break
+	# 	sublime.status_message("UNABLE TO FIND SCRATCH BUFFER BOOKMARK")
+
+	# else:
+
+	view = window.open_file(filePath)
+
+
+	if view is None:
+		Log("unable to find required bookmark to goto")
+	return
+
 	view.show_at_center(bookmark.getRegion())
 		
 	#move cursor to the middle of the bookmark's region
@@ -206,6 +224,17 @@ class Bookmark:
 		self.lineStr = str(lineStr)
 		self.lineNumber = int(lineNumber)
 
+		#is not a "core" property of the bookmark. It changes on every
+		#sublime text load
+		self.bufferID = None
+
+	def setBufferID(self, bufferID):
+		self.bufferID = bufferID
+
+	def getBufferID(self):
+		return self.bufferID
+
+		
 	def getName(self):
 		return self.name
 
@@ -243,6 +272,8 @@ class Bookmark:
 		self.group = int(group)
 
 
+	def isScratchBuffer(self):
+		return self.filePath == "None"
 
 class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 	def __init__(self, window):
@@ -599,6 +630,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		print(filePath)
 
 		bookmark = Bookmark(myUID, name, filePath, projectPath, region, group, lineNumber, lineStr)
+		bookmark.setBufferID(view.buffer_id())
 		BOOKMARKS.append(bookmark)
 
 		self._updateBufferStatus()
@@ -694,7 +726,8 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			open(self.SAVE_PATH, "wb").close()
 			#if you can't load, try and save a "default" state
 			self._Save()
-		
+
+
 	def _Save(self):
 		global BOOKMARKS
 		global BOOKMARKS_MODE
