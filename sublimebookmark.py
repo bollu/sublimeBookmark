@@ -69,6 +69,20 @@ class OptionsInput:
 		inputPanelView.sel().add(selectionRegion)
 	
 #helper functions--------------------------------
+#temp buffer related
+def getViewByBufferID(window, bufferID):
+	for view in window.views():
+		if view.buffer_id() == int(bufferID):
+			return view
+		else:
+			continue
+
+	if window.active_view().buffer_id() == int(bufferID):
+		return window.active_view()
+		
+	Log("NO VIEW. BUFFER ID: " + str(bufferID))
+	return None
+
 #Region manipulation-----------------------------
 def getCurrentLineRegion(view):
 	assert (len(view.sel()) > 0)
@@ -79,58 +93,66 @@ def getCurrentLineRegion(view):
 
 #Bookmark manipulation---------------------
 
-def moveViewToGroup(window, view, group):
-	(viewGroup, viewIndex) = window.get_view_index(view) 
+def moveBookmarkToGroup(window, bookmark, group):
+	
+
+	def moveViewToGroup(window, view, group):
+		(viewGroup, viewIndex) = window.get_view_index(view) 
 
 
-	#the view is not in the required group so move it
-	#we have to move the view to the other group and give it a new index
-	if group != viewGroup or viewGroup == -1 or viewIndex == -1:
-		
-		#SUBLIME_BUG
-		#if the group the view is currently in has only one element - i.e  this view,
-		#sublime text goes crazy and closes our options selector. So, we have to create
-		#a new file in the old group and *only then* move the view.
-		if len(window.views_in_group(viewGroup)) == 1:
-			window.focus_group(viewGroup)
-			window.new_file()
+		#the view is not in the required group so move it
+		#we have to move the view to the other group and give it a new index
+		if group != viewGroup or viewGroup == -1 or viewIndex == -1:
+			
+			#SUBLIME_BUG
+			#if the group the view is currently in has only one element - i.e  this view,
+			#sublime text goes crazy and closes our options selector. So, we have to create
+			#a new file in the old group and *only then* move the view.
+			if len(window.views_in_group(viewGroup)) == 1:
+				window.focus_group(viewGroup)
+				window.new_file()
 
 
-		#if there are 0 views, then the moved view will have index 0
-		#similarly, if there are n views, the last view will have index (n-1), and
-		#so the new view will have index n  
-		newIndex = len (window.views_in_group(group))
-		#move the view to the highlighted group and assign a
-		#correct index
-		window.set_view_index(view, group, newIndex)
+			#if there are 0 views, then the moved view will have index 0
+			#similarly, if there are n views, the last view will have index (n-1), and
+			#so the new view will have index n  
+			newIndex = len (window.views_in_group(group))
+			#move the view to the highlighted group and assign a
+			#correct index
+			window.set_view_index(view, group, newIndex)
 
-	#the view is in the right group, so chill
+		#the view is in the right group, so chill
+		else:
+			pass
+
+
+	view = None
+
+	if bookmark.isTemporaryBuffer():
+		view = getViewByBufferID(window, bookmark.getBufferID())
+		assert (view is not None)
+	
 	else:
-		pass
+		view = window.open_file(bookmark.getFilePath())
 
+	assert (view is not None)
+
+	moveViewToGroup(window, view, group)
 
 def gotoBookmark(bookmark, window):
 	filePath = bookmark.getFilePath()
 	lineNumber = bookmark.getLineNumber()
 
-	view = window.open_file(filePath)
+	view = None
 
-	# if bookmark.isScratchBuffer():
-		
-	# 	for view_ in window.views():
-	# 		if view_.buffer_id() == bookmark.getBufferID():
-	# 			view = view_
-	# 			break
-	# 	sublime.status_message("UNABLE TO FIND SCRATCH BUFFER BOOKMARK")
+	if bookmark.isTemporaryBuffer():
+		view = getViewByBufferID(window, bookmark.getBufferID())
+		window.focus_view(view)
 
-	# else:
+	else:
+		view = window.open_file(filePath)
 
-	view = window.open_file(filePath)
-
-
-	if view is None:
-		Log("unable to find required bookmark to goto")
-	return
+	assert (view is not None)
 
 	view.show_at_center(bookmark.getRegion())
 		
@@ -213,7 +235,7 @@ def showMessage(statusMessage):
 
 #Bookmark-----------
 class Bookmark:
-	def __init__(self, uid, name, filePath, projectPath, region, group, lineNumber, lineStr):
+	def __init__(self, uid, name, filePath, projectPath, region, group, lineNumber, lineStr, bufferID):
 		self.uid = int(uid)
 		self.name = str(name)
 		self.regionA = int(region.a)
@@ -226,9 +248,6 @@ class Bookmark:
 
 		#is not a "core" property of the bookmark. It changes on every
 		#sublime text load
-		self.bufferID = None
-
-	def setBufferID(self, bufferID):
 		self.bufferID = bufferID
 
 	def getBufferID(self):
@@ -272,7 +291,7 @@ class Bookmark:
 		self.group = int(group)
 
 
-	def isScratchBuffer(self):
+	def isTemporaryBuffer(self):
 		return self.filePath == "None"
 
 class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
@@ -346,8 +365,10 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			self._updateBufferStatus()
 
 		elif type == "move_bookmarks":
-			self._UpdateBookmarkPosition();
+			self._UpdateBookmarkPosition()
 
+		elif type == "update_temporary":
+			self._UpdateTemporaryBookmarks()
 
 	def _createBookmarkPanel(self, onHighlight, onDone):
 
@@ -356,16 +377,26 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			#occur.
 			views = window.views()
 			for bookmark in BOOKMARKS:
-				view = window.open_file(bookmark.getFilePath())
-				#if the bookmark is already open, then move it to the active
-				#group. If not, leave it alone, since it can be opened when need be.
-				if view in views:
-					moveViewToGroup(window, view, activeGroup)
+				moveBookmarkToGroup(window, bookmark, activeGroup)
+			# for bookmark in BOOKMARKS:
+
+			# 	#is a scratch buffer, can't really "open" it can you?
+			# 	if bookmark.isTemporaryBuffer():
+			# 		continue
+			# 	else:
+			# 		view = window.open_file(bookmark.getFilePath())
+			# 	#if the bookmark is already open, then move it to the active
+			# 	#group. If not, leave it alone, since it can be opened when need be.
+			# 	if view in views:
+			# 		moveViewToGroup(window, view, activeGroup)
 
 
 		window = self.window
 		activeView = window.active_view()
 		self.activeGroup = self.window.active_group()
+
+		#delete any temp bookmarks that have been since destroyed
+		self._UpdateTemporaryBookmarks()
 
 		#create a list of acceptable bookmarks based on settings
 		self.displayedBookmarks = filterBookmarks(BOOKMARKS, window, activeView, BOOKMARKS_MODE)
@@ -467,7 +498,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			uid = bookmark.getUid()
 			view.erase_regions(str(uid))
 
-		Log ("MARKING BUFFER")
+		#Log ("MARKING BUFFER")
 
 		window = self.window
 		view = window.active_view()
@@ -477,13 +508,14 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		#	return
 
 		filePath = view.file_name()
+		bufferID = view.buffer_id()
 		
 		#mark all bookmarks that are visible, and unmark invisible bookmarks
 		for bookmark in BOOKMARKS:
 			shouldShow = shouldShowBookmark(window, view, bookmark, BOOKMARKS_MODE)
 			#only mark if we are in the right file. Otherwise, all bookmarks will get
 			#marked across all files
-			validContext = bookmark.getFilePath() == filePath
+			validContext = bookmark.getFilePath() == filePath or bookmark.getBufferID() == bufferID
 			
 			if validContext and shouldShow:
 				markBuffer(view, bookmark)
@@ -499,6 +531,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 	def _UpdateBookmarkPosition(self):
 		window = self.window
 		view = window.active_view()
+		bufferID = view.buffer_id()
 		filePath = view.file_name()
 			
 		global BOOKMARKS
@@ -506,7 +539,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		for bookmark in BOOKMARKS:
 			#this bookmark (might) have been changed since it's in the current file
 			#We're on a thread anyway so update it.
-			if bookmark.getFilePath() == filePath:
+			if bookmark.getFilePath() == filePath or bookmark.getBufferID() == bufferID:
 				uid = bookmark.getUid()
 				#load the new region to update it
 				regions = view.get_regions(str(uid))
@@ -534,12 +567,32 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 					ERASED_BOOKMARKS.append(deepcopy(bookmark))
 					BOOKMARKS.remove(bookmark)
+
+				
 					
 		#we've moved regions around so update the buffer
 		self._updateBufferStatus()
 		#we've moved bookmarks around and may also have deleted them. So, save
 		self._Save()
-	
+
+
+
+	def _UpdateTemporaryBookmarks(self):
+		global BOOKMARKS
+		global ERASED_BOOKMARKS
+
+		for bookmark in BOOKMARKS:
+			#if the bookmark is a temporary bookmark and the bookmark has been deleted, remove the bookmark
+			if bookmark.isTemporaryBuffer() and \
+				getViewByBufferID(self.window, bookmark.getBufferID()) is None:
+
+				Log("BOOKMARK IS TEMP AND BUFFER HAS BEEN REMOVED. REMOVING. " + "BUFFER: " + \
+					str(bookmark.getBufferID()) + "; NAME: " + str(bookmark.getName()))
+
+				ERASED_BOOKMARKS.append(deepcopy(bookmark))
+				BOOKMARKS.remove(bookmark)
+
+
 	#helpers-------------------------------------------
 	#creates a bookmark that keeps track of where we were before opening
 	#an options menu. 
@@ -551,7 +604,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 		filePath = activeView.file_name()
 		#there is no file to go back to
-		if filePath is None:
+		if filePath is "None":
 			return None
 
 
@@ -564,8 +617,9 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		projectPath = "" #does not matter
 		lineNumber = -1 #does not matter
 		lineStr = "" #does not matter
+		bufferID = -1#does not matter
 
-		self.revertBookmark = Bookmark(uid, name, filePath, projectPath, region, group, lineNumber, lineStr)
+		self.revertBookmark = Bookmark(uid, name, filePath, projectPath, region, group, lineNumber, lineStr, bufferID)
 
 	#goes to the revert bookmark
 	def _gotoRevertBookmark(self):
@@ -582,10 +636,11 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 	def _restoreFiles(self):
 		views = self.window.views()
 		for bookmark in BOOKMARKS:
-			view = self.window.open_file(bookmark.getFilePath())
+			moveBookmarkToGroup(self.window, bookmark, bookmark.getGroup())
+			#view = self.window.open_file(bookmark.getFilePath())
 			#the bookmark is opened - reset it (move it's view back to it's group)
-			if view in views:
-				moveViewToGroup(self.window, view, bookmark.getGroup())
+			#if view in views:
+			#	moveViewToGroup(self.window, view, bookmark.getGroup())
 
 
 
@@ -593,6 +648,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 	def _AddBookmarkCallback(self, name):
 		window = self.window
 		view = window.active_view()
+		bufferID = view.buffer_id()
 		filePath = view.file_name()
 
 		#if the view is a temporary view, it can be none
@@ -627,11 +683,10 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		#create a bookmark and add it to the global list
 		global BOOKMARKS
 
-		print(filePath)
+		Log("FILE PATH: " + str(filePath) + "; BUFFER ID: " + str(bufferID))
 
-		bookmark = Bookmark(myUID, name, filePath, projectPath, region, group, lineNumber, lineStr)
-		bookmark.setBufferID(view.buffer_id())
-		BOOKMARKS.append(bookmark)
+		bookmark = Bookmark(myUID, name, filePath, projectPath, region, group, lineNumber, lineStr, bufferID)
+		BOOKMARKS.append(deepcopy(bookmark))
 
 		self._updateBufferStatus()
 		#File IO Here!--------------------
@@ -664,10 +719,13 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			#now open the selected bookmark and scroll to bookmark
 			self._AutoMoveToBookmarkCallback(index)
 
-			#move the correct bookmark back to the active group
+			#move the correct bookmark back to the active group - since all fails
+			#including the bookmark have been restored, we have to move the bookmark back
+			#ARRGH! this is __so__ hacky :( 
 			bookmark = self.displayedBookmarks[index]
-			view = self.window.open_file(bookmark.getFilePath())
-			moveViewToGroup(self.window, view, self.activeGroup)
+			moveBookmarkToGroup(self.window, bookmark, self.activeGroup)
+			#view = 
+			#moveViewToGroup(self.window, view, self.activeGroup)
 
 		self._updateBufferStatus()
 
@@ -733,8 +791,9 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		global BOOKMARKS_MODE
 		global UID
 
-		Log("SAVING BOOKMARKS")
+		#Log("SAVING BOOKMARKS")
 
+		
 		try:
 			savefile = open(self.SAVE_PATH, "wb")
 
