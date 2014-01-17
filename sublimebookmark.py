@@ -287,6 +287,12 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			#on option select, remove the selected item
 			self._createBookmarkPanel(self._RemoveDoneCallback, self._AutoMoveToBookmarkCallback)
 
+		elif type == "remove_all":
+			self._removeAllBookmarks()
+
+		elif type == "toggle_line":
+			self._toggleCurrentLine()
+
 		elif type == "show_all_bookmarks":
 			BOOKMARKS_MODE = SHOW_ALL_BOOKMARKS()
 			self._Save()
@@ -305,8 +311,6 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			#update buffer to show only project bookmarks
 			self._updateBufferStatus()
 
-		elif type == "remove_all":
-			self._removeAllBookmarks()
 
 		elif type == "mark_buffer":
 			self._updateBufferStatus()
@@ -386,6 +390,37 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		self._updateBufferStatus()
 		#save to eternal storage
 		self._Save()
+
+	def _toggleCurrentLine(self):
+		def getLineBookmark(window):
+			currentFilePath = window.active_view().file_name()
+			cursorRegion = getCurrentLineRegion(window.active_view())
+
+			for bookmark in BOOKMARKS:
+				if bookmark.getFilePath() ==  currentFilePath and \
+					bookmark.getRegion().contains(cursorRegion):
+					return bookmark
+
+			#no bookmark
+			return None
+
+		bookmark = getLineBookmark(self.window)
+
+		if bookmark is not None:
+			global ERASED_BOOKMARKS
+			global BOOKMARKS
+
+			#add to list of erased bookmarks
+			ERASED_BOOKMARKS.append(deepcopy(bookmark))
+			BOOKMARKS.remove(bookmark)
+
+			self._updateBufferStatus()
+			#File IO Here!--------------------
+			self._Save()
+		else:
+			self._addBookmark()
+
+
 
 	def _updateBufferStatus(self):
 		#marks the given bookmark on the buffer
