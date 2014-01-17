@@ -24,7 +24,11 @@
         "command": "sublime_bookmark",
         "args" : { "type" : "remove_all" }
     },
-
+    {
+        "caption": "SublimeBookmarks: Toggle Current Line",
+        "command": "sublime_bookmark",
+        "args" : { "type" : "toggle_line" }
+    },
     {
         "caption": "SublimeBookmarks: Show All Bookmarks ",
         "command": "sublime_bookmark",
