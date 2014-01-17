@@ -9,6 +9,7 @@ def Log(string):
 	if False:
 		print (string)
 
+
 REGION_BASE_TAG = int(11001001000011111101)
 SETTINGS_NAME = "SublimeBookmarks.sublime-settings"
 #if someone names their project this, we're boned
@@ -179,11 +180,9 @@ def createBookmarkPanelItems(window, activeView, filteredBookmarks):
 	for bookmark in filteredBookmarks:
 			bookmarkName = bookmark.getName()
 
-			lineStrRaw = bookmark.getLineStr()
-
-			bookmarkLine = ellipsisStringEnd(lineStrRaw.strip(), 55)
-			bookmarkFile = ellipsisStringBegin(bookmark.getFilePath(), 55)
-
+			bookmarkLine = bookmark.getLineStr().lstrip()
+			bookmarkFile = ellipsisStringBegin(bookmark.getFilePath().lstrip(), 55)
+			
 			bookmarkItems.append( [bookmarkName, bookmarkLine, bookmarkFile] )
 		
 
@@ -324,7 +323,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			for bookmark in BOOKMARKS:
 				view = window.open_file(bookmark.getFilePath())
 				#if the bookmark is already open, then move it to the active
-				#group. If not, leave it alone, since it can be opened when need br.
+				#group. If not, leave it alone, since it can be opened when need be.
 				if view in views:
 					moveViewToGroup(window, view, activeGroup)
 
@@ -345,6 +344,9 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		#create a revert bookmark to go back if the user cancels
 		self._createRevertBookmark(activeView)
 
+		#update all bookmark positions that we have so that we know the
+		#latest positions of all bookmarks
+		self._UpdateBookmarkPosition()
 		#move all active bookmarks to the currently active group
 		moveBookmarksToActiveGroup(self.activeGroup)
 
@@ -405,8 +407,8 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		view = window.active_view()
 
 		#this can happen if it's a temporary file
-		if view is None:
-			return
+		#if view is None:
+		#	return
 
 		filePath = view.file_name()
 		
@@ -528,8 +530,8 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		filePath = view.file_name()
 
 		#if the view is a temporary view, it can be none
-		if view is None:
-			return
+		#if view is None:
+		#	return
 
 		#figure out the project path
 		projectPath = window.project_file_name()
@@ -558,6 +560,8 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 		#create a bookmark and add it to the global list
 		global BOOKMARKS
+
+		print(filePath)
 
 		bookmark = Bookmark(myUID, name, filePath, projectPath, region, group, lineNumber, lineStr)
 		BOOKMARKS.append(bookmark)
