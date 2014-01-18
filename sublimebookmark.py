@@ -378,18 +378,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			views = window.views()
 			for bookmark in BOOKMARKS:
 				moveBookmarkToGroup(window, bookmark, activeGroup)
-			# for bookmark in BOOKMARKS:
-
-			# 	#is a scratch buffer, can't really "open" it can you?
-			# 	if bookmark.isTemporaryBuffer():
-			# 		continue
-			# 	else:
-			# 		view = window.open_file(bookmark.getFilePath())
-			# 	#if the bookmark is already open, then move it to the active
-			# 	#group. If not, leave it alone, since it can be opened when need be.
-			# 	if view in views:
-			# 		moveViewToGroup(window, view, activeGroup)
-
+			
 
 		window = self.window
 		activeView = window.active_view()
@@ -515,7 +504,8 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			shouldShow = shouldShowBookmark(window, view, bookmark, BOOKMARKS_MODE)
 			#only mark if we are in the right file. Otherwise, all bookmarks will get
 			#marked across all files
-			validContext = bookmark.getFilePath() == filePath or bookmark.getBufferID() == bufferID
+			showTempBookmark = (bookmark.getFilePath() == "None") and (bookmark.getBufferID() == bufferID)
+			validContext = bookmark.getFilePath() == filePath or showTempBookmark
 			
 			if validContext and shouldShow:
 				markBuffer(view, bookmark)
@@ -539,14 +529,16 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		for bookmark in BOOKMARKS:
 			#this bookmark (might) have been changed since it's in the current file
 			#We're on a thread anyway so update it.
-			if bookmark.getFilePath() == filePath or bookmark.getBufferID() == bufferID:
+
+			showTempBookmark = (bookmark.getFilePath() == "None") and (bookmark.getBufferID() == bufferID)
+			if bookmark.getFilePath() == filePath or showTempBookmark:
 				uid = bookmark.getUid()
 				#load the new region to update it
 				regions = view.get_regions(str(uid))
 
 				#the region is not loaded yet
 				if len(regions) == 0:
-					continue
+					return
 
 				#keep the new region on the *WHOLE* line, so that it covers new text also
 				newRegion = view.line(regions[0])
