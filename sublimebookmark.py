@@ -538,7 +538,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 				#the region is not loaded yet
 				if len(regions) == 0:
-					continue
+					return
 
 				#keep the new region on the *WHOLE* line, so that it covers new text also
 				newRegion = view.line(regions[0])
