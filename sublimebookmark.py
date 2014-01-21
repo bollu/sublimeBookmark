@@ -269,6 +269,8 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 		self._Load()
 
+		self.global_bookmark_index = -1
+
 
 	def run(self, type):
 		global BOOKMARKS_MODE
@@ -280,6 +282,12 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			#on highlighting, goto the current bookmark
 			#on option select, just center the selected item
 			self._createBookmarkPanel(self._HilightDoneCallback, self._AutoMoveToBookmarkCallback)
+
+		elif type == "goto_next":
+			self._gotoNext(True);
+
+		elif type == "goto_previous":
+			self._gotoNext(False);
 
 		elif type == "remove":
 			#on highlighting, goto the current bookmark
@@ -317,6 +325,12 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		elif type == "move_bookmarks":
 			self._UpdateBookmarkPosition();
 
+	def _getActiveBookmarks(self):
+		window = self.window
+		activeView = window.active_view()
+
+		#create a list of acceptable bookmarks based on settings
+		self.displayedBookmarks = filterBookmarks(BOOKMARKS, window, activeView, BOOKMARKS_MODE)
 
 	def _createBookmarkPanel(self, onHighlight, onDone):
 
@@ -331,19 +345,19 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 				if view in views:
 					moveViewToGroup(window, view, activeGroup)
 
+		self._getActiveBookmarks();
 
 		window = self.window
 		activeView = window.active_view()
 		self.activeGroup = self.window.active_group()
 
-		#create a list of acceptable bookmarks based on settings
-		self.displayedBookmarks = filterBookmarks(BOOKMARKS, window, activeView, BOOKMARKS_MODE)
-		bookmarkPanelItems = createBookmarkPanelItems(window, activeView, self.displayedBookmarks)
 
 		#if no bookmarks are acceptable, don't show bookmarks
 		if len(self.displayedBookmarks) == 0:
 			sublime.status_message("SublimeBookmarks: NO ACCEPTABLE BOOKMARKS TO GOTO. CHECK CURRENT MODE")
 			return
+
+		bookmarkPanelItems = createBookmarkPanelItems(window, activeView, self.displayedBookmarks)
 
 		#create a revert bookmark to go back if the user cancels
 		self._createRevertBookmark(activeView)
@@ -639,6 +653,27 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 		self._updateBufferStatus()
 
+	def _gotoNext(self, forward):
+		# Gather appropriate bookmarks
+		self._getActiveBookmarks();
+
+		if 0 == len(self.displayedBookmarks):
+			return
+
+		# increment or decrement
+		if forward:
+			self.global_bookmark_index = self.global_bookmark_index + 1
+		else:
+			self.global_bookmark_index = self.global_bookmark_index - 1
+
+		# if we're pointing off the end, go to the first one instead
+		if self.global_bookmark_index >= len(self.displayedBookmarks):
+			self.global_bookmark_index = 0
+		# if we're pointing off the beginning, go to the last one instead
+		if self.global_bookmark_index < 0:
+			self.global_bookmark_index = len(self.displayedBookmarks) - 1
+		# Go there!
+		self._AutoMoveToBookmarkCallback(self.global_bookmark_index)
 
 	#remove the selected bookmark or go back if user cancelled
 	def _RemoveDoneCallback(self, index):
@@ -667,6 +702,10 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			#add to list of erased bookmarks
 			ERASED_BOOKMARKS.append(deepcopy(bookmark))
 			BOOKMARKS.remove(bookmark)
+
+			#decrement global_bookmark_index so goto_next will not skip anything
+			if index <= self.global_bookmark_index:
+				self.global_bookmark_index = self.global_bookmark_index - 1
 
 		self._updateBufferStatus()
 		#File IO Here!--------------------
