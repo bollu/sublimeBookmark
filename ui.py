@@ -10,7 +10,7 @@ class OptionsSelector:
 		
 	def start(self):
 		startIndex = 0
-		self.window.show_quick_panel(self.panelItems, self.onDone, 0, startIndex, self.onHighlight)
+		self.window.show_quick_panel(self.panelItems, self.onDone)
 
 
 class OptionsInput:

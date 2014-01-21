@@ -36,11 +36,15 @@ def getCurrentLineRegion(view):
 
 
 def getCurrentProjectPath(window):
-	projectPath = window.project_file_name()
-	if projectPath is None or projectPath is "":
-		projectPath = NO_PROJECT
+	#FIXME: return a proper project file name
+	return NO_PROJECT
 
-	return projectPath	
+	
+	# projectPath = window.project_file_name()
+	# if projectPath is None or projectPath is "":
+	# 	projectPath = NO_PROJECT
+
+	# return projectPath	
 
 
 def getCurrentActiveGroup(window):

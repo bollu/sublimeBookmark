@@ -1,4 +1,4 @@
-from .common import *
+from common import *
 
 class Bookmark:
 	
@@ -77,7 +77,9 @@ class Bookmark:
 			
 		#move cursor to the middle of the bookmark's region
 		bookmarkRegionMid = 0.5 * (region.begin() +  region.end())
-		moveRegion = sublime.Region(bookmarkRegionMid, bookmarkRegionMid)
+
+		#this is idiotic -_-
+		moveRegion = sublime.Region(long(bookmarkRegionMid), long(bookmarkRegionMid))
 		view.sel().clear()
 		view.sel().add(moveRegion)
 

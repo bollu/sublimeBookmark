@@ -48,17 +48,18 @@
         "args" : { "type" : "show_all_bookmarks" }
     },
 
-    {
+  /* FIXME: implement projects in ST2
+   {
         "caption": "SublimeBookmarks: Show Bookmarks Only In Current Project ",
         "command": "sublime_bookmark",
         "args" : { "type" : "show_project_bookmarks" }
-    },
+    },*/
 
     {
         "caption": "SublimeBookmarks: Show Bookmarks Only In Current File ",
         "command": "sublime_bookmark",
         "args" : { "type" : "show_file_bookmarks" }
-    },
+    }
 
     
 ]

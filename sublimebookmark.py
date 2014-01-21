@@ -1,15 +1,16 @@
 import sublime
 import sublime_plugin
+import thread
 import threading 
 import os.path
 from pickle import dump, load, UnpicklingError, PicklingError
 from copy import deepcopy
 
 
-from .common import *
-from .bookmark import *
-from .visibilityHandler import *
-from .ui import *
+from common import *
+from bookmark import *
+from visibilityHandler import *
+from ui import *
 
 
 BOOKMARKS = []
@@ -125,13 +126,13 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 		#ASYNC OPERATIONS---------------------------
 		elif type == "mark_buffer":
-			self._updateBufferStatus()
+			threading.Thread(self._updateBufferStatus()).start()
 
 		elif type == "move_bookmarks":
-			self._UpdateBookmarkPosition()
+			threading.Thread(self._UpdateBookmarkPosition()).start()
 
 		elif type == "update_temporary":
-			self._UpdateTemporaryBookmarks()
+			threading.Thread(self._UpdateTemporaryBookmarks()).start()
 
 	def _createBookmarkPanel(self, onHighlight, onDone):
 
@@ -279,7 +280,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		def markBuffer(view, bookmark):
 			uid = bookmark.getUid()
 			region  = bookmark.getRegion()
-			view.add_regions(str(uid), [region], "text.plain", "bookmark", sublime.DRAW_NO_FILL | sublime.DRAW_EMPTY_AS_OVERWRITE)
+			view.add_regions(str(uid), [region], "text.plain", "bookmark", sublime.DRAW_OUTLINED)
 
 		#unmarks the given bookmark on the buffer
 		def unmarkBuffer(view, bookmark):
