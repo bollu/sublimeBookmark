@@ -1,3 +1,5 @@
+from .common import *
+
 #whether all bookmarks (even unrelated) should be shown
 def SHOW_ALL_BOOKMARKS():
 	return "Show All Bookmarks"
@@ -31,7 +33,7 @@ def shouldShowBookmark(window, activeView, bookmark, bookmarkMode):
 			bookmark.getFilePath() == currentFilePath:
 			return True
 	else:
-		assert(False)
+		#there are no bookmarks in the current file
 		return False
 
 	return False

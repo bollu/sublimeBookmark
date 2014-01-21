@@ -1,6 +1,15 @@
 import sublime
 import sublime_plugin
 
+#if someone names their project this, we're boned
+NO_PROJECT = "___NO_PROJECT_PRESENT____"
+
+
+REGION_BASE_TAG = int(11001001000011111101)
+SETTINGS_NAME = "SublimeBookmarks.sublime-settings"
+
+VERSION = "2.0.0"
+
 
 
 def Log(string):
@@ -25,8 +34,7 @@ def getCurrentLineRegion(view):
 
 	return region 
 
-#if someone names their project this, we're boned
-NO_PROJECT = "___NO_PROJECT_PRESENT____"
+
 def getCurrentProjectPath(window):
 	projectPath = window.project_file_name()
 	if projectPath is None or projectPath is "":

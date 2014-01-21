@@ -11,11 +11,6 @@ from .bookmark import *
 from .visibilityHandler import *
 from .ui import *
 
-REGION_BASE_TAG = int(11001001000011111101)
-SETTINGS_NAME = "SublimeBookmarks.sublime-settings"
-
-VERSION = "2.0.0"
-
 
 BOOKMARKS = []
 UID = None
@@ -145,14 +140,11 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			#occur.
 			for bookmark in BOOKMARKS:
 				moveBookmarkToGroup(self.window, bookmark, self.activeGroup)
-			
-		def createPanel():
-			self.displayedBookmarks = getVisibleBookmarks(BOOKMARKS, self.window, self.activeView, BOOKMARKS_MODE)
-			bookmarkPanelItems = createBookmarkPanelItems(self.window, self.displayedBookmarks)
+		
 
-			#if no bookmarks are acceptable, don't show bookmarks
-			if len(self.displayedBookmarks) == 0:
-				return False
+
+		def createPanel():
+			bookmarkPanelItems = createBookmarkPanelItems(self.window, self.displayedBookmarks)
 
 			#create a selection panel and launch it
 			selector = OptionsSelector(self.window, bookmarkPanelItems, onHighlight, onDone)
@@ -160,11 +152,20 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 			return True
 
+		#load all visible bookmarks
+		self.displayedBookmarks = getVisibleBookmarks(BOOKMARKS, self.window, self.activeView, BOOKMARKS_MODE)
+			
+		#if no bookmarks are acceptable, don't show bookmarks
+		if len(self.displayedBookmarks) == 0:
+			return False
+
+		
 		#create a revert bookmark to go back if the user cancels
 		self._createRevertBookmark(self.activeView)
 		
 		#move all active bookmarks to the currently active group
 		moveBookmarksToActiveGroup(self.activeGroup)
+
 
 		#create the selection panel
 		panelCreated = createPanel()
