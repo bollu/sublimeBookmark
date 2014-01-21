@@ -14,6 +14,9 @@ from .ui import *
 REGION_BASE_TAG = int(11001001000011111101)
 SETTINGS_NAME = "SublimeBookmarks.sublime-settings"
 
+VERSION = "2.0.0"
+
+
 BOOKMARKS = []
 UID = None
 
@@ -52,12 +55,14 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 		#the bookmark to go to if the user cancels
 		self.revertBookmark = None
-		self.activeGroup = 0
-		
+
 		#bookmarks that are being shown in the panel
 		self.displayedBookmarks = None
 
-		#bookmark that represents the file from which the panel was activated
+		#the index used for goto next / goto previous
+		#not a believer of dynamic typing
+		self.global_bookmark_index = int(-1)
+
 		currentDir = os.path.dirname(sublime.packages_path())
 		self.SAVE_PATH = currentDir + '/sublimeBookmarks.pickle'
 		Log(currentDir)
@@ -96,6 +101,14 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		elif type == "toggle_line":
 			self._toggleCurrentLine()
 
+		elif type == "goto_next":
+			self._quickGoto(True)
+
+		elif type == "goto_previous":
+			self._quickGoto(False)
+
+
+		#BOOKMARK MODES-------------------------
 		elif type == "show_all_bookmarks":
 			BOOKMARKS_MODE = SHOW_ALL_BOOKMARKS()
 			self._Save()
@@ -115,6 +128,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			self._updateBufferStatus()
 
 
+		#ASYNC OPERATIONS---------------------------
 		elif type == "mark_buffer":
 			self._updateBufferStatus()
 
@@ -173,6 +187,8 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		input = OptionsInput(self.window, "Add Bookmark", initialText, self._AddBookmarkCallback, None)
 		input.start()
 
+
+
 	def _removeAllBookmarks(self):
 		window = self.window
 		view = window.active_view()
@@ -193,6 +209,34 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		self._updateBufferStatus()
 		#save to eternal storage
 		self._Save()
+
+
+	def _quickGoto(self, forward):
+		# Gather appropriate bookmarks
+		self.displayedBookmarks = getVisibleBookmarks(BOOKMARKS, self.window, self.activeView, BOOKMARKS_MODE)
+
+		if 0 == len(self.displayedBookmarks):
+			MESSAGE_NoBookmarkToGoto()
+			return
+
+		# increment or decrement
+		if forward:
+			self.global_bookmark_index = self.global_bookmark_index + 1
+		else:
+			self.global_bookmark_index = self.global_bookmark_index - 1
+
+		# if we're pointing off the end, go to the first one instead
+		if self.global_bookmark_index >= len(self.displayedBookmarks):
+			self.global_bookmark_index = 0
+		# if we're pointing off the beginning, go to the last one instead
+		if self.global_bookmark_index < 0:
+			self.global_bookmark_index = len(self.displayedBookmarks) - 1
+		
+		# Go there!
+		bookmark = BOOKMARKS[self.global_bookmark_index]	
+		moveBookmarkToGroup(self.window, bookmark, self.activeGroup)
+		self._AutoMoveToBookmarkCallback(self.global_bookmark_index)
+
 
 	def _toggleCurrentLine(self):
 		def getLineBookmark(window):
@@ -221,10 +265,14 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			#File IO Here!--------------------
 			self._Save()
 		else:
-			self._addBookmark()
+			region = getCurrentLineRegion(self.activeView)
+			#copy whatever is on the line for the bookmark name
+			name = self.activeView.substr(region).strip()
+
+			self._AddBookmarkCallback(name)
 
 
-
+#ASYNC OPERATIONS----------------------------------------------
 	def _updateBufferStatus(self):
 		#marks the given bookmark on the buffer
 		def markBuffer(view, bookmark):
@@ -237,7 +285,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			uid = bookmark.getUid()
 			view.erase_regions(str(uid))
 
-		if self.active_view is None:
+		if self.activeView is None:
 			return
 			
 		filePath = self.activeView.file_name()
@@ -286,7 +334,8 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		self._Save()
 
 
-
+	#check if the buffers associated with temporary bookmark are still active or not, and remove
+	#unnecessary bookmarks
 	def _UpdateTemporaryBookmarks(self):
 		for bookmark in BOOKMARKS:
 			#if the bookmark is a temporary bookmark and the bookmark has been deleted, remove the bookmark
@@ -408,6 +457,10 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			bookmark.goto(self.window)
 			removeBookmark(bookmark)
 
+			#decrement global_bookmark_index so goto_next will not skip anything
+			if index <= self.global_bookmark_index:
+				self.global_bookmark_index = self.global_bookmark_index - 1
+
 
 		self._updateBufferStatus()
 		self._Save()
@@ -423,11 +476,17 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		try:
 			savefile = open(self.SAVE_PATH, "rb")
 
+			saveVersion = load(savefile)
+			
+			if saveVersion != VERSION:
+				raise UnpicklingError("version difference in files")   
+				
 			BOOKMARKS_MODE = load(savefile)
 			UID = load(savefile)
 			BOOKMARKS = load(savefile)
 	
 		except (OSError, IOError, UnpicklingError, EOFError, BaseException) as e:
+			print ("\nEXCEPTION:------- ")
 			print (e)
 			print("\nUNABLE TO LOAD BOOKMARKS. NUKING LOAD FILE")
 			#clear the load file :]
@@ -445,6 +504,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		try:
 			savefile = open(self.SAVE_PATH, "wb")
 
+			dump(VERSION, savefile)
 			dump(BOOKMARKS_MODE, savefile)
 			dump(UID, savefile)
 			dump(BOOKMARKS, savefile)

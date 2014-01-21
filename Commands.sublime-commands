@@ -19,6 +19,19 @@
         "command": "sublime_bookmark",
         "args" : { "type" : "remove" }
     },
+    
+    {
+        "caption": "SublimeBookmarks: Goto Next Bookmark",
+        "command": "sublime_bookmark",
+        "args" : { "type" : "goto_next" }
+    },
+    
+    {
+        "caption": "SublimeBookmarks: Goto Previous Bookmark",
+        "command": "sublime_bookmark",
+        "args" : { "type" : "goto_previous" }
+    },
+
     {
         "caption": "SublimeBookmarks: Remove All Bookmarks (Clear Bookmarks)",
         "command": "sublime_bookmark",
