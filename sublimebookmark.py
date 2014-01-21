@@ -18,6 +18,8 @@ NO_PROJECT = "___NO_PROJECT_PRESENT____"
 BOOKMARKS = []
 UID = None
 
+VERSION = "2.0.0"
+
 #list of bookmarks that have ben deleted. 
 #This is used to remove bookmarks' buffer highlights. Without this, if a bookmark is removed,
 #when a file is revisited, the buffer will still be marked. This will keep track of bookmarks
@@ -284,10 +286,10 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			self._createBookmarkPanel(self._HilightDoneCallback, self._AutoMoveToBookmarkCallback)
 
 		elif type == "goto_next":
-			self._gotoNext(True);
+			self._quickGoto(True);
 
 		elif type == "goto_previous":
-			self._gotoNext(False);
+			self._quickGoto(False);
 
 		elif type == "remove":
 			#on highlighting, goto the current bookmark
@@ -656,7 +658,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 		self._updateBufferStatus()
 
-	def _gotoNext(self, forward):
+	def _quickGoto(self, forward):
 		# Gather appropriate bookmarks
 		self._getActiveBookmarks();
 
@@ -721,15 +723,21 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		global BOOKMARKS_MODE
 		global UID
 
-		Log("LOADING BOOKMARKS")
+		Log("LOADING BOOKMARKS\n")
 		try:
 			savefile = open(self.SAVE_PATH, "rb")
+
+			saveVersion = load(savefile)
+			
+			if saveVersion != VERSION:
+				raise UnpicklingError("version difference in files")   
 
 			BOOKMARKS_MODE = load(savefile)
 			UID = load(savefile)
 			BOOKMARKS = load(savefile)
 	
 		except (OSError, IOError, UnpicklingError, EOFError) as e:
+			print ("\nEXCEPTION:------- ")
 			print (e)
 			print("\nUNABLE TO LOAD BOOKMARKS. NUKING LOAD FILE")
 			#clear the load file :]
@@ -747,6 +755,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		try:
 			savefile = open(self.SAVE_PATH, "wb")
 
+			dump(VERSION, savefile)
 			dump(BOOKMARKS_MODE, savefile)
 			dump(UID, savefile)
 			dump(BOOKMARKS, savefile)
