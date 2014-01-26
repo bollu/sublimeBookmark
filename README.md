@@ -15,7 +15,7 @@ Let's face it: sublime text's bookmark system __sucks__.
 
 This is a replacement for sublime text's bookmark functionality. It's slicker and easier to use, and has way more features. 
 
-**Note**: As of now, This is only for **Sublime Text 3**.
+**Note**: <del> As of now, This is only for **Sublime Text 3**. </del> False! It's been ported. Unfortunately, I havent' implement live preview and project based bookmark sorting. I'm not sure how to port these features over to Sublime Text 2. If someone knows, please do contact me!
 
 
 Features
@@ -25,7 +25,7 @@ Features
 * Bookmarks are saved across sessions
 * Goto any bookmark in the project
 * Add any number of bookmarks (not just 12).
-* Project based bookmarks (bookmarks are stored per-project and bookmarks can be navigated on a per-project basis)
+* Project based bookmarks (bookmarks are stored per-project and bookmarks can be navigated on a per-project basis) (Only for ST3)
 
 To Install
 ==========
@@ -99,7 +99,7 @@ Notes / Addendum
 
 ###Some TODO Stuff:###
 
-* Port to Sublime Text 2
+* <del>Port to Sublime Text 2 </del> (This is partially done. Unfortunately, I'm not able to implement live previews and project support. I don't really know how to port these to ST2. If someone does, please do contact me! )
 * <del>Add an option to only show bookmarks belonging to current project </del>   (Nope, it now fully supports project-based bookmark management!)
 
 
