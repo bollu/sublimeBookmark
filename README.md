@@ -1,4 +1,4 @@
-sublimeBookmark
+SublimeBookmark
 ===============
 
 a better bookmark system for SublimeText
