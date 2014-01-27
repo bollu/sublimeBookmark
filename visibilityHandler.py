@@ -39,10 +39,49 @@ def shouldShowBookmark(window, activeView, bookmark, bookmarkMode):
 	return False
 
 
+
+
+
+def ___sortBookmarks(visibleBookmarks, currentFile):
+	from collections import defaultdict
+
+	def lineSortFn(bookmark):
+		return bookmark.getLineNumber()
+
+	def sortByLineNumber(bookmarks):
+		return sorted (bookmarks, key = lineSortFn)
+
+	fileBookmarks = defaultdict(list)
+	sortedBookmarks = []
+
+	for bookmark in visibleBookmarks:
+		filePath = bookmark.getFilePath()
+		fileBookmarks[filePath].append(bookmark)
+
+
+	#take all bookmarks in current file, sort then 1st and then remove the current file from the 
+	#list of files
+	currentFileBookmarks = fileBookmarks[currentFile]
+	sortedBookmarks = sortedBookmarks + sortByLineNumber(currentFileBookmarks)
+	
+	del fileBookmarks[currentFile]
+		
+	#iterate over all list of bookmarks in each file and sort them according to line number
+	for bookmarkList in fileBookmarks.values():
+		sortedBookmarkList = sortByLineNumber(bookmarkList)
+		sortedBookmarks = sortedBookmarks + sortedBookmarkList
+
+
+	print (sortedBookmarks)
+	return sortedBookmarks
+
+
+
 def getVisibleBookmarks(bookmarks, window, activeView, bookmarkMode):
 	visibleBookmarks = []
 	for bookmark in bookmarks:
 		if shouldShowBookmark(window, activeView, bookmark, bookmarkMode):
 			visibleBookmarks.append(bookmark)
 
-	return visibleBookmarks
+	sortedBookmarks = ___sortBookmarks(visibleBookmarks, activeView.file_name())
+	return sortedBookmarks

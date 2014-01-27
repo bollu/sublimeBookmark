@@ -33,7 +33,6 @@ class OptionsInput:
 		inputPanelView.sel().add(selectionRegion)
 	
 
-
 def createBookmarkPanelItems(window, visibleBookmarks):	
 
 	def ellipsisStringEnd(string, length):
@@ -52,6 +51,7 @@ def createBookmarkPanelItems(window, visibleBookmarks):
 
 
 	bookmarkItems = []
+
 	for bookmark in visibleBookmarks:
 			bookmarkName = bookmark.getName()
 
