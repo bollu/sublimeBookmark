@@ -109,5 +109,5 @@ Just fork my repo and send a pull request. I'll gladly accept :)
 
 I've spent quite some time writing this and making it bug-free. It would really help me if you'd chip in a little something :) I'm a student, so a little goes a long way.
 
-![Support via Gittip](https://rawgithub.com/twolfson/gittip-badge/0.1.0/dist/gittip.png)](https://www.gittip.com/bollu/)
+[![Support via Gittip](https://rawgithub.com/twolfson/gittip-badge/0.1.0/dist/gittip.png)](https://www.gittip.com/bollu/)
 
