@@ -37,7 +37,7 @@
 							{ "caption": "-" },
                             {
                                 "command": "open_file",
-                                "args": {"file": "${packages}/SublimeBookmarks/Default.sublime-keymap"},
+                                "args": {"file": "${packages}/Sublime Bookmarks/Default.sublime-keymap"},
                                 "caption": "Key Bindings – Default"
                             },
                             {
