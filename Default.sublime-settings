@@ -1,0 +1,6 @@
+{
+	/*name of the scope - valid values are "comment", "text.plain"*/
+	"color_scope_name" : "comment",
+	/*whether bookmarks must be outlined or filled*/
+	"draw_outlined" : true
+}

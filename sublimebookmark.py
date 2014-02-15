@@ -6,7 +6,7 @@ import os.path
 from pickle import dump, load, UnpicklingError, PicklingError
 from copy import deepcopy
 
-
+from Pref import *
 from common import *
 from bookmark import *
 from visibilityHandler import *
@@ -25,6 +25,8 @@ ERASED_BOOKMARKS = []
 #whether all bookmarks (even unrelated) should be shown
 BOOKMARKS_MODE = SHOW_ALL_BOOKMARKS()
 
+#settings / preferences.
+PREFERENCES = None
 
 def removeBookmark(bookmark):
 	global BOOKMARKS
@@ -45,6 +47,14 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		global BOOKMARKS
 		global UID
 		global BOOKMARKS_MODE
+		global PREFERENCES
+
+		#hook the settings module. Thanks to Serghei Filippov for the neat
+		#technique!
+		settings = sublime.load_settings('Sublime Bookmarks.sublime-settings')
+		PREFERENCES = Pref()
+		PREFERENCES.load(settings) 
+		settings.add_on_change('reload', lambda:Pref.load())
 
 		BOOKMARKS_MODE = SHOW_ALL_BOOKMARKS()
 
@@ -287,7 +297,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		def markBuffer(view, bookmark):
 			uid = bookmark.getUid()
 			region  = bookmark.getRegion()
-			view.add_regions(str(uid), [region], "text.plain", "bookmark", sublime.DRAW_OUTLINED)
+			view.add_regions(str(uid), [region], PREFERENCES.color_scope_name, "bookmark", PREFERENCES.draw_outlined)
 
 		#unmarks the given bookmark on the buffer
 		def unmarkBuffer(view, bookmark):
