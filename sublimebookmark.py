@@ -43,7 +43,10 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		self.activeView = self.window.active_view()
 
 		global BOOKMARKS
-		global UID 
+		global UID
+		global BOOKMARKS_MODE
+
+		BOOKMARKS_MODE = SHOW_ALL_BOOKMARKS()
 
 		BOOKMARKS = []		
 		#initialize to 0
@@ -126,13 +129,16 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 		#ASYNC OPERATIONS---------------------------
 		elif type == "mark_buffer":
-			threading.Thread(self._updateBufferStatus()).start()
+			self._updateBufferStatus()
+			#threading.Thread(self._updateBufferStatus()).start()
 
 		elif type == "move_bookmarks":
-			threading.Thread(self._UpdateBookmarkPosition()).start()
+			self._UpdateBookmarkPosition()
+			#threading.Thread()).start()
 
 		elif type == "update_temporary":
-			threading.Thread(self._UpdateTemporaryBookmarks()).start()
+			self._UpdateTemporaryBookmarks()
+			#threading.Thread(self._UpdateTemporaryBookmarks()).start()
 
 	def _createBookmarkPanel(self, onHighlight, onDone):
 
@@ -158,6 +164,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			
 		#if no bookmarks are acceptable, don't show bookmarks
 		if len(self.displayedBookmarks) == 0:
+			MESSAGE_NoBookmarkToGoto()
 			return False
 
 		

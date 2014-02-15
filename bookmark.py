@@ -69,6 +69,8 @@ class Bookmark:
 
 
 	def goto(self, window):
+		assert window is not None
+
 		view = getBookmarkView(window, self)
 		assert (view is not None)
 
@@ -86,12 +88,17 @@ class Bookmark:
 
 	def isEmpty(self,  view):
 		region = self.getRegion()
-
+		
 		line = view.substr(region) 
 		return isLineEmpty(line)
 
 	#the bookmark is associated with the current view
 	def isMyView(self, window, view):
+
+		#yes, this can happen in ST2 (-_-)
+		if window is None:
+			return False
+
 		#I bloody hate python for this madness
 		if view is None:
 			return False
@@ -105,10 +112,12 @@ class Bookmark:
 			return  self.getFilePath() == filePath
 
 	#updates the bookmark's data
-	#1) moved region to cover whole line
+	#1) moves region to cover whole line
 	#2) updates the group info
 	#3) updates the current line string
 	def updateData(self, window, myView):
+		assert (window is not None)
+
 		regions = myView.get_regions(str(self.uid))
 
 		#the region is not loaded yet
@@ -127,6 +136,8 @@ class Bookmark:
 
 
 def getBookmarkView(window, bookmark):
+	assert window is not None
+
 	view = None
 	if bookmark.isTemporary():
 		#mimic behavior of open_file. so w have to focus the view too...
@@ -139,12 +150,16 @@ def getBookmarkView(window, bookmark):
 	return view
 
 def shouldRemoveTempBookmark(window, bookmark):
+	assert window is not None
+
 	assert(bookmark.isTemporary())
 	return getViewByBufferID(window, bookmark.getBufferID()) is None
 
 
 #I hate this function.
 def moveBookmarkToGroup(window, bookmark, group):
+	assert window is not None
+
 	def moveViewToGroup(window, view, group):
 		(viewGroup, viewIndex) = window.get_view_index(view) 
 
