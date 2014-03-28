@@ -1,0 +1,6 @@
+[  
+	{ "keys": ["ctrl+shift+f2"], "command": "sublime_bookmark", "args" : { "type" : "add"  } },
+    { "keys": ["f2"], "command": "sublime_bookmark", "args" : { "type" : "goto_next" } },
+	{ "keys": ["shift+f2"], "command": "sublime_bookmark", "args" : { "type" : "goto_prev" } },
+	{ "keys": ["ctrl+f2"], "command": "sublime_bookmark", "args" : { "type" : "toggle_line"  } }
+]  
