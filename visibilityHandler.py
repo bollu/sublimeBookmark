@@ -1,4 +1,7 @@
-from .common import *
+if int(sublime.version()) < 3000:
+	from common import *
+else:
+	from .common import *
 
 #whether all bookmarks (even unrelated) should be shown
 def SHOW_ALL_BOOKMARKS():
@@ -18,7 +21,7 @@ def shouldShowBookmark(window, activeView, bookmark, bookmarkMode):
 		return currentProjectPath ==  NO_PROJECT or currentProjectPath == bookmarkProjectPath
 
 	currentFilePath = activeView.file_name()
-	currentProjectPath = window.project_file_name() 
+	currentProjectPath = getCurrentProjectPath(window) 
 
 	#free bookmarks can be shown. We don't need a criteria
 	if bookmarkMode == SHOW_ALL_BOOKMARKS():

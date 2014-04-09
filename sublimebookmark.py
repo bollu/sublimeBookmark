@@ -5,11 +5,18 @@ import os.path
 from pickle import dump, load, UnpicklingError, PicklingError
 from copy import deepcopy
 
-
-from .common import *
-from .bookmark import *
-from .visibilityHandler import *
-from .ui import *
+if int(sublime.version()) < 3000:
+	import thread
+	from Pref import *
+	from common import *
+	from bookmark import *
+	from visibilityHandler import *
+	from ui import *
+else:
+	from .common import *
+	from .bookmark import *
+	from .visibilityHandler import *
+	from .ui import *
 
 
 BOOKMARKS = []

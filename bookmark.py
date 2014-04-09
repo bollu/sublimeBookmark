@@ -1,5 +1,10 @@
-from .common import *
+import sublime, sublime_plugin
 
+if int(sublime.version()) < 3000:
+	from common import *
+else:
+	from .common import *
+	
 class Bookmark:
 	
 	def __init__(self, uid, name, window, activeView):

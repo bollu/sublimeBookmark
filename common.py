@@ -10,8 +10,6 @@ SETTINGS_NAME = "SublimeBookmarks.sublime-settings"
 
 VERSION = "2.0.0"
 
-
-
 def Log(string):
 	if True:
 		print (string)

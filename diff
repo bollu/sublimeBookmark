@@ -1,0 +1,453 @@
+diff --git a/Commands.sublime-commands b/Commands.sublime-commands
+index 438e7de..4ac4a57 100644
+--- a/Commands.sublime-commands
++++ b/Commands.sublime-commands
+@@ -48,17 +48,18 @@
+         "args" : { "type" : "show_all_bookmarks" }
+     },
+ 
+-    {
++  /* FIXME: implement projects in ST2
++   {
+         "caption": "SublimeBookmarks: Show Bookmarks Only In Current Project ",
+         "command": "sublime_bookmark",
+         "args" : { "type" : "show_project_bookmarks" }
+-    },
++    },*/
+ 
+     {
+         "caption": "SublimeBookmarks: Show Bookmarks Only In Current File ",
+         "command": "sublime_bookmark",
+         "args" : { "type" : "show_file_bookmarks" }
+-    },
++    }
+ 
+     
+ ]
+diff --git a/Default.sublime-keymap b/Default.sublime-keymap
+index f5c4cee..ee07b71 100644
+--- a/Default.sublime-keymap
++++ b/Default.sublime-keymap
+@@ -1,6 +1,9 @@
+ [  
+-	{ "keys": ["ctrl+shift+f2"], "command": "sublime_bookmark", "args" : { "type" : "add"  } },
+-    { "keys": ["f2"], "command": "sublime_bookmark", "args" : { "type" : "goto_next" } },
+-	{ "keys": ["shift+f2"], "command": "sublime_bookmark", "args" : { "type" : "goto_prev" } },
+-	{ "keys": ["ctrl+f2"], "command": "sublime_bookmark", "args" : { "type" : "toggle_line"  } }
++	//keys are unbound by default. Bind by editing your User key bindings
++	//goto a bookmark
++    { "keys": ["alt+f2"],  "command": "sublime_bookmark", "args" : { "type" : "goto" } },
++    //add a bookmark
++    { "keys": ["f2"],      "command": "sublime_bookmark", "args" : { "type" : "add" } },
++    //remove a bookmark
++    { "keys": ["ctrl+f2"], "command": "sublime_bookmark", "args" : { "type" : "remove" } }
+ ]  
+\ No newline at end of file
+diff --git a/Default.sublime-settings b/Default.sublime-settings
+new file mode 100644
+index 0000000..bfbb039
+--- /dev/null
++++ b/Default.sublime-settings
+@@ -0,0 +1,6 @@
++{
++	/*name of the scope - valid values are "comment", "text.plain"*/
++	"color_scope_name" : "comment",
++	/*whether bookmarks must be outlined or filled*/
++	"draw_outlined" : true
++}
+\ No newline at end of file
+diff --git a/Main.sublime-menu b/Main.sublime-menu
+index 920ca19..80a0ba3 100644
+--- a/Main.sublime-menu
++++ b/Main.sublime-menu
+@@ -42,10 +42,22 @@
+                             },
+                             {
+                                 "command": "open_file", 
+-                                "args": {"file": "${packages}/User/Default.sublime-keymap"},
++                                "args": {"file": "${packages}/User/Sublime Bookmarks.sublime-keymap"},
+                                 "caption": "Key Bindings – User"
+                             },
+-                            { "caption": "-" }
++                            { "caption": "-" },
++                            {
++                                "command": "open_file",
++                                "args": {"file": "${packages}/SublimeBookmarks/Default.sublime-settings"},
++                                "caption": "Settings – Default"
++                            },
++                            { "caption": "-" },
++                            {
++                                "command": "open_file", 
++                                "args": {"file": "${packages}/User/Sublime Bookmarks.sublime-settings"},
++                                "caption": "Settings – User"
++                            }
++
+ 						]
+ 					}
+ 				]
+diff --git a/Pref.py b/Pref.py
+new file mode 100644
+index 0000000..cf6bde8
+--- /dev/null
++++ b/Pref.py
+@@ -0,0 +1,7 @@
++import sublime
++
++class Pref:
++	def load(self, settings):
++		Pref.color_scope_name = settings.get('color_scope_name', "comment")
++		Pref.draw_outlined = bool(settings.get('draw_outlined', True)) * sublime.DRAW_OUTLINED
++		Pref.enabled = True
+\ No newline at end of file
+diff --git a/README.md b/README.md
+index 9f50ac0..66d1252 100644
+--- a/README.md
++++ b/README.md
+@@ -1,4 +1,4 @@
+-SublimeBookmark
++sublimeBookmark
+ ===============
+ 
+ a better bookmark system for SublimeText
+@@ -15,7 +15,7 @@ Let's face it: sublime text's bookmark system __sucks__.
+ 
+ This is a replacement for sublime text's bookmark functionality. It's slicker and easier to use, and has way more features. 
+ 
+-**Note**: <del> As of now, This is only for **Sublime Text 3**. </del> False! It's been ported. Unfortunately, I havent' implement live preview and project based bookmark sorting. I'm not sure how to port these features over to Sublime Text 2. If someone knows, please do contact me!
++**Note**: As of now, This is only for **Sublime Text 3**.
+ 
+ 
+ Features
+@@ -25,7 +25,7 @@ Features
+ * Bookmarks are saved across sessions
+ * Goto any bookmark in the project
+ * Add any number of bookmarks (not just 12).
+-* Project based bookmarks (bookmarks are stored per-project and bookmarks can be navigated on a per-project basis) (Only for ST3)
++* Project based bookmarks (bookmarks are stored per-project and bookmarks can be navigated on a per-project basis)
+ 
+ To Install
+ ==========
+@@ -99,7 +99,7 @@ Notes / Addendum
+ 
+ ###Some TODO Stuff:###
+ 
+-* <del>Port to Sublime Text 2 </del> (This is partially done. Unfortunately, I'm not able to implement live previews and project support. I don't really know how to port these to ST2. If someone does, please do contact me! )
++* Port to Sublime Text 2
+ * <del>Add an option to only show bookmarks belonging to current project </del>   (Nope, it now fully supports project-based bookmark management!)
+ 
+ 
+@@ -107,7 +107,3 @@ Notes / Addendum
+ 
+ Just fork my repo and send a pull request. I'll gladly accept :)
+ 
+-I've spent quite some time writing this and making it bug-free. It would really help me if you'd chip in a little something :) I'm a student, so a little goes a long way.
+-
+-[![Support via Gittip](https://rawgithub.com/twolfson/gittip-badge/0.1.0/dist/gittip.png)](https://www.gittip.com/bollu/)
+-
+diff --git a/bookmark.py b/bookmark.py
+index f3e1d04..a5dffe8 100644
+--- a/bookmark.py
++++ b/bookmark.py
+@@ -1,4 +1,4 @@
+-from .common import *
++from common import *
+ 
+ class Bookmark:
+ 	
+@@ -69,6 +69,8 @@ class Bookmark:
+ 
+ 
+ 	def goto(self, window):
++		assert window is not None
++
+ 		view = getBookmarkView(window, self)
+ 		assert (view is not None)
+ 
+@@ -77,19 +79,26 @@ class Bookmark:
+ 			
+ 		#move cursor to the middle of the bookmark's region
+ 		bookmarkRegionMid = 0.5 * (region.begin() +  region.end())
+-		moveRegion = sublime.Region(bookmarkRegionMid, bookmarkRegionMid)
++
++		#this is idiotic -_-
++		moveRegion = sublime.Region(long(bookmarkRegionMid), long(bookmarkRegionMid))
+ 		view.sel().clear()
+ 		view.sel().add(moveRegion)
+ 
+ 
+ 	def isEmpty(self,  view):
+ 		region = self.getRegion()
+-
++		
+ 		line = view.substr(region) 
+ 		return isLineEmpty(line)
+ 
+ 	#the bookmark is associated with the current view
+ 	def isMyView(self, window, view):
++
++		#yes, this can happen in ST2 (-_-)
++		if window is None:
++			return False
++
+ 		#I bloody hate python for this madness
+ 		if view is None:
+ 			return False
+@@ -103,10 +112,12 @@ class Bookmark:
+ 			return  self.getFilePath() == filePath
+ 
+ 	#updates the bookmark's data
+-	#1) moved region to cover whole line
++	#1) moves region to cover whole line
+ 	#2) updates the group info
+ 	#3) updates the current line string
+ 	def updateData(self, window, myView):
++		assert (window is not None)
++
+ 		regions = myView.get_regions(str(self.uid))
+ 
+ 		#the region is not loaded yet
+@@ -125,6 +136,8 @@ class Bookmark:
+ 
+ 
+ def getBookmarkView(window, bookmark):
++	assert window is not None
++
+ 	view = None
+ 	if bookmark.isTemporary():
+ 		#mimic behavior of open_file. so w have to focus the view too...
+@@ -137,12 +150,16 @@ def getBookmarkView(window, bookmark):
+ 	return view
+ 
+ def shouldRemoveTempBookmark(window, bookmark):
++	assert window is not None
++
+ 	assert(bookmark.isTemporary())
+ 	return getViewByBufferID(window, bookmark.getBufferID()) is None
+ 
+ 
+ #I hate this function.
+ def moveBookmarkToGroup(window, bookmark, group):
++	assert window is not None
++
+ 	def moveViewToGroup(window, view, group):
+ 		(viewGroup, viewIndex) = window.get_view_index(view) 
+ 
+diff --git a/bookmarkWatcher.py b/bookmarkWatcher.py
+index b335a39..da8ed1c 100644
+--- a/bookmarkWatcher.py
++++ b/bookmarkWatcher.py
+@@ -1,23 +1,32 @@
+ import sublime, sublime_plugin
++import thread
+ 
+ class bookmarkWatcher(sublime_plugin.EventListener):
+-	def on_activated_async(self, view):
+-		sublime.active_window().run_command("sublime_bookmark", {"type": "mark_buffer" } )
+-		sublime.active_window().run_command("sublime_bookmark", {"type": "move_bookmarks" } )
++	def on_activated(self, view):
++		window = sublime.active_window()
+ 
++		if window is not None:
++			window.run_command("sublime_bookmark", {"type": "mark_buffer" } )
++			window.run_command("sublime_bookmark", {"type": "move_bookmarks" } )
+ 
+-	def on_modified_async(self, view):
+-		sublime.active_window().run_command("sublime_bookmark", {"type": "move_bookmarks" } ) 
+ 
++	def on_modified(self, view):
++		window = sublime.active_window()
+ 
+-	def on_deactivated_async(self, view):
+-		sublime.active_window().run_command("sublime_bookmark", {"type": "mark_buffer" } )
+-		sublime.active_window().run_command("sublime_bookmark", {"type": "move_bookmarks" } )
++		if window is not None:
++			window.run_command("sublime_bookmark", {"type": "move_bookmarks" } ) 
++
++
++	def on_deactivated(self, view):
++		window = sublime.active_window()
++
++		if window is not None:
++			window.run_command("sublime_bookmark", {"type": "mark_buffer" } )
++			window.run_command("sublime_bookmark", {"type": "move_bookmarks" } )
+ 
+ 	#must be no close, not on pre close. on pre-close,the view still exists
+ 	def on_close(self, view):
+-		sublime.active_window().run_command("sublime_bookmark", {"type": "update_temporary" } )
++		window = sublime.active_window()
+ 
+-	def on_pre_save_async(self, view):
+-		pass
+-		#sublime.run_command("sublime_bookmark", {"type": "save_data" } )
+\ No newline at end of file
++		if window is not None:
++			window.run_command("sublime_bookmark", {"type": "update_temporary" } )
+diff --git a/common.py b/common.py
+index b344ad8..baf422f 100644
+--- a/common.py
++++ b/common.py
+@@ -36,11 +36,15 @@ def getCurrentLineRegion(view):
+ 
+ 
+ def getCurrentProjectPath(window):
+-	projectPath = window.project_file_name()
+-	if projectPath is None or projectPath is "":
+-		projectPath = NO_PROJECT
++	#FIXME: return a proper project file name
++	return NO_PROJECT
+ 
+-	return projectPath	
++	
++	# projectPath = window.project_file_name()
++	# if projectPath is None or projectPath is "":
++	# 	projectPath = NO_PROJECT
++
++	# return projectPath	
+ 
+ 
+ def getCurrentActiveGroup(window):
+diff --git a/sublimebookmark.py b/sublimebookmark.py
+index 97c57c9..ff9b990 100644
+--- a/sublimebookmark.py
++++ b/sublimebookmark.py
+@@ -1,15 +1,16 @@
+ import sublime
+ import sublime_plugin
++import thread
+ import threading 
+ import os.path
+ from pickle import dump, load, UnpicklingError, PicklingError
+ from copy import deepcopy
+ 
+-
+-from .common import *
+-from .bookmark import *
+-from .visibilityHandler import *
+-from .ui import *
++from Pref import *
++from common import *
++from bookmark import *
++from visibilityHandler import *
++from ui import *
+ 
+ 
+ BOOKMARKS = []
+@@ -24,6 +25,8 @@ ERASED_BOOKMARKS = []
+ #whether all bookmarks (even unrelated) should be shown
+ BOOKMARKS_MODE = SHOW_ALL_BOOKMARKS()
+ 
++#settings / preferences.
++PREFERENCES = None
+ 
+ def removeBookmark(bookmark):
+ 	global BOOKMARKS
+@@ -42,7 +45,18 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
+ 		self.activeView = self.window.active_view()
+ 
+ 		global BOOKMARKS
+-		global UID 
++		global UID
++		global BOOKMARKS_MODE
++		global PREFERENCES
++
++		#hook the settings module. Thanks to Serghei Filippov for the neat
++		#technique!
++		settings = sublime.load_settings('Sublime Bookmarks.sublime-settings')
++		PREFERENCES = Pref()
++		PREFERENCES.load(settings) 
++		settings.add_on_change('reload', lambda:Pref.load())
++
++		BOOKMARKS_MODE = SHOW_ALL_BOOKMARKS()
+ 
+ 		BOOKMARKS = []		
+ 		#initialize to 0
+@@ -126,12 +140,15 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
+ 		#ASYNC OPERATIONS---------------------------
+ 		elif type == "mark_buffer":
+ 			self._updateBufferStatus()
++			#threading.Thread(self._updateBufferStatus()).start()
+ 
+ 		elif type == "move_bookmarks":
+ 			self._UpdateBookmarkPosition()
++			#threading.Thread()).start()
+ 
+ 		elif type == "update_temporary":
+ 			self._UpdateTemporaryBookmarks()
++			#threading.Thread(self._UpdateTemporaryBookmarks()).start()
+ 
+ 	def _createBookmarkPanel(self, onHighlight, onDone):
+ 
+@@ -157,6 +174,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
+ 			
+ 		#if no bookmarks are acceptable, don't show bookmarks
+ 		if len(self.displayedBookmarks) == 0:
++			MESSAGE_NoBookmarkToGoto()
+ 			return False
+ 
+ 		
+@@ -279,7 +297,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
+ 		def markBuffer(view, bookmark):
+ 			uid = bookmark.getUid()
+ 			region  = bookmark.getRegion()
+-			view.add_regions(str(uid), [region], "text.plain", "bookmark", sublime.DRAW_NO_FILL | sublime.DRAW_EMPTY_AS_OVERWRITE)
++			view.add_regions(str(uid), [region], PREFERENCES.color_scope_name, "bookmark", PREFERENCES.draw_outlined)
+ 
+ 		#unmarks the given bookmark on the buffer
+ 		def unmarkBuffer(view, bookmark):
+diff --git a/ui.py b/ui.py
+index 6b6a811..7fed324 100644
+--- a/ui.py
++++ b/ui.py
+@@ -10,7 +10,7 @@ class OptionsSelector:
+ 		
+ 	def start(self):
+ 		startIndex = 0
+-		self.window.show_quick_panel(self.panelItems, self.onDone, 0, startIndex, self.onHighlight)
++		self.window.show_quick_panel(self.panelItems, self.onDone)
+ 
+ 
+ class OptionsInput:
+@@ -33,6 +33,7 @@ class OptionsInput:
+ 		inputPanelView.sel().add(selectionRegion)
+ 	
+ 
++
+ def createBookmarkPanelItems(window, visibleBookmarks):	
+ 
+ 	def ellipsisStringEnd(string, length):
+@@ -51,7 +52,6 @@ def createBookmarkPanelItems(window, visibleBookmarks):
+ 
+ 
+ 	bookmarkItems = []
+-
+ 	for bookmark in visibleBookmarks:
+ 			bookmarkName = bookmark.getName()
+ 
+diff --git a/visibilityHandler.py b/visibilityHandler.py
+index 5388a2d..2daff76 100644
+--- a/visibilityHandler.py
++++ b/visibilityHandler.py
+@@ -1,4 +1,4 @@
+-from .common import *
++from common import *
+ 
+ #whether all bookmarks (even unrelated) should be shown
+ def SHOW_ALL_BOOKMARKS():
+@@ -18,7 +18,7 @@ def shouldShowBookmark(window, activeView, bookmark, bookmarkMode):
+ 		return currentProjectPath ==  NO_PROJECT or currentProjectPath == bookmarkProjectPath
+ 
+ 	currentFilePath = activeView.file_name()
+-	currentProjectPath = window.project_file_name() 
++	currentProjectPath = getCurrentProjectPath(window) 
+ 
+ 	#free bookmarks can be shown. We don't need a criteria
+ 	if bookmarkMode == SHOW_ALL_BOOKMARKS():
+@@ -40,8 +40,6 @@ def shouldShowBookmark(window, activeView, bookmark, bookmarkMode):
+ 
+ 
+ 
+-
+-
+ def ___sortBookmarks(visibleBookmarks, currentFile):
+ 	from collections import defaultdict
+ 
