@@ -65,7 +65,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		self._Load()
 
 
-	def run(self, type):
+	def run(self, type, name=None):
 		global BOOKMARKS_MODE
 
 		self.activeGroup = self.window.active_group()	
@@ -78,7 +78,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 		self._UpdateTemporaryBookmarks()
 
 		if type == "add":
-			self._addBookmark()
+			self._addBookmark(name)
 
 		elif type == "goto":
 			#on highlighting, goto the current bookmark
@@ -175,19 +175,21 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 	
 
 	#event handlers----------------------------
-	def _addBookmark(self):
+	def _addBookmark(self, name):
 		Log ("add")
 
-		window = self.window
-		view = window.active_view()
-		region = getCurrentLineRegion(view)
+		if name is None:
+			window = self.window
+			view = window.active_view()
+			region = getCurrentLineRegion(view)
 
-		#copy whatever is on the line for the bookmark name
-		initialText = view.substr(region).strip()
+			#copy whatever is on the line for the bookmark name
+			initialText = view.substr(region).strip()
 
-		input = OptionsInput(self.window, "Add Bookmark", initialText, self._AddBookmarkCallback, None)
-		input.start()
-
+			input = OptionsInput(self.window, "Add Bookmark", initialText, self._AddBookmarkCallback, None)
+			input.start()
+		else:
+			self._AddBookmarkCallback(name)
 
 
 	def _removeAllBookmarks(self):
