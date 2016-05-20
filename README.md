@@ -92,7 +92,7 @@ This will only show bookmarks that belong to the current project.
 
  Press ```ctrl + shift + P```  on Windows / Linux or ```cmd + shift + P``` on Mac and select ```SublimeBookmarks:Show Only Bookmarks In Current File```
 
-This will only show bookmarks that belong to the current project.
+This will only show bookmarks that belong to the current file.
 
 Notes / Addendum
 ================
