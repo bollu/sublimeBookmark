@@ -15,7 +15,7 @@ Let's face it: sublime text's bookmark system __sucks__.
 
 This is a replacement for sublime text's bookmark functionality. It's slicker and easier to use, and has way more features. 
 
-**Note**: <del> As of now, This is only for **Sublime Text 3**. </del> False! It's been ported. Unfortunately, I havent' implement live preview and project based bookmark sorting. I'm not sure how to port these features over to Sublime Text 2. If someone knows, please do contact me!
+**Note**: <del> As of now, This is only for **Sublime Text 3**. </del> False! It's been ported. Unfortunately, I havent' implement live preview and project based bookmark sorting. I'm not sure how to port these features over to Sublime Text 2. If someone knows, please do contact me!d
 
 
 Features
@@ -65,8 +65,8 @@ To remove _all_ bookmarks, select the option ```SublimeBookmarks:Remove All Book
 
 ##Visibility Modes:##
 
-SublimeBookmarks has 3 visibility modes associated with it:
-
+SublimeBookmarks has 3 visibility modes associated with it.
+The default mode is option 2.
 
 ###1) View all Bookmarks###
 
