@@ -328,7 +328,8 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
         for bookmark in BOOKMARKS:
 
             # if the activeView is the bookmark's view, update r
-            if bookmark.isMyView(self.window, self.activeView):
+            # if bookmark.isMyView(self.window, self.activeView):
+            if bookmark.isMyView(self.window, self.activeView) and not self.activeView.is_loading():
 
                 bookmark.updateData(self.window, self.activeView)
 
