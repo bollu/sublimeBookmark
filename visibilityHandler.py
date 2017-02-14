@@ -72,16 +72,16 @@ def ___sortBookmarks(visibleBookmarks, currentFile):
 		sortedBookmarks = sortedBookmarks + sortedBookmarkList
 
 
-	print (sortedBookmarks)
 	return sortedBookmarks
 
 
 
-def getVisibleBookmarks(bookmarks, window, activeView, bookmarkMode):
+def getVisibleBookmarks(bookmarks, window, activeView, bookmarkMode, activeFileFirst):
 	visibleBookmarks = []
 	for bookmark in bookmarks:
 		if shouldShowBookmark(window, activeView, bookmark, bookmarkMode):
 			visibleBookmarks.append(bookmark)
 
-	sortedBookmarks = ___sortBookmarks(visibleBookmarks, activeView.file_name())
-	return sortedBookmarks
+	if activeFileFirst:
+		visibleBookmarks = ___sortBookmarks(visibleBookmarks, activeView.file_name())
+	return visibleBookmarks

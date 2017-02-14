@@ -153,7 +153,8 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 			return True
 
 		#load all visible bookmarks
-		self.displayedBookmarks = getVisibleBookmarks(BOOKMARKS, self.window, self.activeView, BOOKMARKS_MODE)
+		self.displayedBookmarks = getVisibleBookmarks(BOOKMARKS, self.window, self.activeView,
+			BOOKMARKS_MODE, activeFileFirst=True)
 			
 		#if no bookmarks are acceptable, don't show bookmarks
 		if len(self.displayedBookmarks) == 0:
@@ -214,7 +215,9 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
 	def _quickGoto(self, forward):
 		# Gather appropriate bookmarks
-		self.displayedBookmarks = getVisibleBookmarks(BOOKMARKS, self.window, self.activeView, BOOKMARKS_MODE)
+		# Do not order by active file name because we need global order.
+		self.displayedBookmarks = getVisibleBookmarks(BOOKMARKS, self.window, self.activeView,
+			BOOKMARKS_MODE, activeFileFirst=False)
 
 		if 0 == len(self.displayedBookmarks):
 			MESSAGE_NoBookmarkToGoto()
