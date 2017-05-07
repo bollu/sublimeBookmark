@@ -1,9 +1,21 @@
-SublimeBookmark
+SublimeBookmark [UNMAINTAINED]
 ===============
 
 a better bookmark system for SublimeText
 
 ![demo gif](http://i.imgur.com/gtjChPG.gif)
+
+
+Unmaintained
+============
+Unfortunately, being a college student doesn't leave me with time to fix the bugs that people seem to be having with
+this codebase. I do wish to rewrite this, since this was written when I was new to python. If **anyone** wishes to either
+1. Take ownership of the package
+2. Help me rewrite this
+
+Please do ping me, help is very appreciated `:)`
+
+
 
 Motivation
 ==========
